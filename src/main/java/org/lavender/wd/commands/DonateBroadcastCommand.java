@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.ConfigurationSection;
 import org.lavender.wd.WelcomeDonationsPlugin;
 
 /**
@@ -38,7 +40,42 @@ public class DonateBroadcastCommand implements CommandExecutor, TabCompleter {
         String item = args[1];
         String amount = (args.length >= 3) ? args[2] : "";
 
-        plugin.broadcastDonation(player, item, amount);
+        ConfigurationSection pkgSec = plugin.getConfig().getConfigurationSection("packages." + item);
+        if (pkgSec != null) {
+            String type = pkgSec.getString("type", "donation").toLowerCase();
+
+            if ("rank".equals(type)) {
+                String rankName = pkgSec.getString("rank", item);
+                String fmt = pkgSec.getString("broadcast-format", plugin.getConfig().getString("ranks.format", "&6[Rango] &e%player% &fcompró &b%rank%"));
+                String msg = fmt.replace("%player%", player).replace("%rank%", rankName).replace("%amount%", amount);
+                Bukkit.broadcastMessage(color(msg));
+
+                String giveCmd = pkgSec.getString("give-command", "");
+                if (giveCmd != null && !giveCmd.isBlank()) {
+                    Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), giveCmd.replace("%player%", player).replace("%rank%", rankName).replace("%amount%", amount));
+                }
+
+                if (pkgSec.getBoolean("auto-forward-proxy", false)) {
+                    plugin.forwardRankViaProxy(player, rankName);
+                }
+            } else {
+                String labelPkg = pkgSec.getString("label", item);
+                String fmt = pkgSec.getString("broadcast-format", plugin.getConfig().getString("donations.format", "&6[Donación] &e%player% &fapoyó con &b%amount%"));
+                String msg = fmt.replace("%player%", player).replace("%item%", labelPkg).replace("%amount%", amount).replace("%monto%", amount);
+                Bukkit.broadcastMessage(color(msg));
+
+                if (pkgSec.getBoolean("auto-forward-proxy", false)) {
+                    plugin.forwardDonationViaProxy(player, labelPkg, amount);
+                }
+            }
+        } else {
+            List<String> allowedRanks = plugin.getConfig().getStringList("ranks.allowed-ranks");
+            if (allowedRanks.contains(item)) {
+                plugin.broadcastDonation(player, "Rango " + item, "");
+            } else {
+                plugin.broadcastDonation(player, item, amount);
+            }
+        }
         return true;
     }
 
@@ -63,7 +100,11 @@ public class DonateBroadcastCommand implements CommandExecutor, TabCompleter {
             }
             case 2 -> {
                 // sugerir paquetes comunes
-                List<String> sugerencias = List.of("VIP", "VIPPlus", "RankLegend", "PaqueteLlaves", "Cosmetico");
+                ConfigurationSection pkgs = plugin.getConfig().getConfigurationSection("packages");
+                if (pkgs == null) {
+                    return Collections.emptyList();
+                }
+                List<String> sugerencias = new ArrayList<>(pkgs.getKeys(false));
                 return filtrar(sugerencias, args[1]);
             }
             case 3 -> {
