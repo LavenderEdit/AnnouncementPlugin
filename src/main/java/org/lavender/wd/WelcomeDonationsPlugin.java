@@ -155,8 +155,28 @@ public class WelcomeDonationsPlugin extends JavaPlugin implements Listener, Plug
         }
     }
 
+    public void announceRankPurchase(String player, String rank) {
+        if (!getConfig().getBoolean("ranks.enabled", true)) {
+            return;
+        }
+        String fmt = getConfig().getString("ranks.format", "&6[Rango] &e%player% &fcompró &b%rank% ¡Bienvenido!");
+        Bukkit.broadcastMessage(color(fmt.replace("%player%", player).replace("%rank%", rank)));
+
+        String soundName = getConfig().getString("ranks.sound", "ENTITY_VILLAGER_CELEBRATE");
+        if (soundName != null && !soundName.isEmpty()) {
+            try {
+                Sound sound = Sound.valueOf(soundName);
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.playSound(p.getLocation(), sound, 1f, 1f);
+                }
+            } catch (IllegalArgumentException ignored) {
+                getLogger().warning("Sonido inválido: " + soundName);
+            }
+        }
+    }
+
     // ==== Mensajería con Proxy (BungeeCord/Velocity) ====
-    private void forwardDonationViaProxy(String player, String item, String amount) {
+    public void forwardDonationViaProxy(String player, String item, String amount) {
         try {
             ByteArrayOutputStream b = new ByteArrayOutputStream();
             DataOutputStream out = new DataOutputStream(b);
@@ -188,10 +208,43 @@ public class WelcomeDonationsPlugin extends JavaPlugin implements Listener, Plug
         }
     }
 
+    public void forwardRankViaProxy(String player, String rank) {
+        try {
+            ByteArrayOutputStream b = new ByteArrayOutputStream();
+            DataOutputStream out = new DataOutputStream(b);
+            out.writeUTF("Forward");
+            out.writeUTF("ALL");
+            out.writeUTF("wd:rank");
+
+            ByteArrayOutputStream msgBytes = new ByteArrayOutputStream();
+            DataOutputStream msgOut = new DataOutputStream(msgBytes);
+            msgOut.writeUTF(player);
+            msgOut.writeUTF(rank);
+
+            byte[] data = msgBytes.toByteArray();
+            out.writeShort(data.length);
+            out.write(data);
+
+            Player any = Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+            if (any != null) {
+                any.sendPluginMessage(this, "BungeeCord", b.toByteArray());
+            }
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Error reenviando rango: {0}", e.getMessage());
+        }
+    }
+
     public void broadcastDonation(String player, String item, String amount) {
         this.announceDonationLocal(player, item, amount);
         if (this.getConfig().getBoolean("donations.proxy-forward.enabled", false)) {
             this.forwardDonationViaProxy(player, item, amount);
+        }
+    }
+
+    public void broadcastRank(String player, String rank) {
+        this.announceRankPurchase(player, rank);
+        if (this.getConfig().getBoolean("ranks.proxy-forward.enabled", false)) {
+            this.forwardRankViaProxy(player, rank);
         }
     }
 
@@ -204,18 +257,23 @@ public class WelcomeDonationsPlugin extends JavaPlugin implements Listener, Plug
             DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
             String sub = in.readUTF();
             if ("Forward".equals(sub)) {
-                String server = in.readUTF(); // origen
+                String server = in.readUTF();
                 String thisChannel = in.readUTF();
+
                 if ("wd:donation".equals(thisChannel)) {
                     short len = in.readShort();
                     byte[] data = new byte[len];
                     in.readFully(data);
                     DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(data));
-                    String pl = msgIn.readUTF();
-                    String it = msgIn.readUTF();
-                    String am = msgIn.readUTF();
-                    // Anunciar localmente
-                    announceDonationLocal(pl, it, am);
+                    announceDonationLocal(msgIn.readUTF(), msgIn.readUTF(), msgIn.readUTF());
+                }
+
+                if ("wd:rank".equals(thisChannel)) {
+                    short len = in.readShort();
+                    byte[] data = new byte[len];
+                    in.readFully(data);
+                    DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(data));
+                    announceRankPurchase(msgIn.readUTF(), msgIn.readUTF());
                 }
             }
         } catch (IOException e) {
