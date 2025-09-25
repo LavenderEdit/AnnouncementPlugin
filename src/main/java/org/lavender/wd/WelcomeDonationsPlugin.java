@@ -54,13 +54,13 @@ public class WelcomeDonationsPlugin extends JavaPlugin implements Listener, Plug
         // Listeners y comandos activos solo en SPAWN/SURVIVAL
         getServer().getPluginManager().registerEvents(this, this);
 
-        var cmd = this.getCommand("donatebroadcast");
+        var cmd = this.getCommand("ga");
         if (cmd != null) {
             var exec = new org.lavender.wd.commands.DonateBroadcastCommand(this);
             cmd.setExecutor(exec);
             cmd.setTabCompleter(exec);
         } else {
-            this.getLogger().severe("El comando \'donatebroadcast\' no está definido en plugin.yml");
+            this.getLogger().severe("El comando \'ga\' no está definido en plugin.yml");
         }
 
         getLogger().log(Level.INFO, "WelcomeDonations habilitado en rol: {0}", role);
