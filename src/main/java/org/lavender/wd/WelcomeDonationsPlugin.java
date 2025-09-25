@@ -19,7 +19,7 @@ import java.util.logging.Level;
 
 /**
  *
- * @authors Lavender
+ * @authors Lavender & VaCris
  */
 public class WelcomeDonationsPlugin extends JavaPlugin implements Listener, PluginMessageListener {
 

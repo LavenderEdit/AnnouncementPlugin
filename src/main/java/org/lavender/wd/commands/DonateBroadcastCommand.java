@@ -15,7 +15,7 @@ import org.lavender.wd.WelcomeDonationsPlugin;
 
 /**
  *
- * @authors Lavender
+ * @authors Lavender & VaCris
  */
 public class DonateBroadcastCommand implements CommandExecutor, TabCompleter {
 
