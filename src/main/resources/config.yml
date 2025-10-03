@@ -1,4 +1,4 @@
-# @authors Lavender & VaCris
+# @authors Studios TKOH!
 # Rol de este servidor en tu red: AUTH | SPAWN | SURVIVAL
 server-role: SPAWN
 
@@ -6,18 +6,6 @@ server-role: SPAWN
 welcome:
   enabled: true
   first-join:
-    chat: "&aBienvenido &e%player% &aa nuestra comunidad! &7(primera vez)"
-    title:
-      enabled: true
-      main: "&a¡Bienvenido!"
-      sub: "&fDisfruta tu estadía, %player%"
-      fade-in: 10
-      stay: 50
-      fade-out: 10
-    sound: "ENTITY_PLAYER_LEVELUP"
-  rejoin:
-    chat: "&a¡%player% ha entrado! &7Salúdenlo 👋"
-    title:
       enabled: false
     sound: "UI_TOAST_CHALLENGE_COMPLETE"
 
@@ -57,4 +45,3 @@ packages:
 messages:
   disabled-on-auth: "&7[WD] Este plugin está deshabilitado en servidores de AUTH."
   no-permission: "&cNo tienes permiso."
-  usage-donate: "&eUso: /donatebroadcast <jugador> <paquete|motivo> [monto]"

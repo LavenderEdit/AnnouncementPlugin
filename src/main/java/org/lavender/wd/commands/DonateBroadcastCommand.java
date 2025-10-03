@@ -3,131 +3,131 @@ package org.lavender.wd.commands;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.ConfigurationSection;
-import org.lavender.wd.WelcomeDonationsPlugin;
+import org.lavender.wd.core.Colorizer;
+import org.lavender.wd.core.PluginSettings;
+import org.lavender.wd.donations.DonationAnnouncement;
+import org.lavender.wd.donations.DonationService;
+import org.lavender.wd.donations.PackageCatalog;
+import org.lavender.wd.donations.PackageDefinition;
+import org.lavender.wd.donations.RankPurchase;
+import org.lavender.wd.donations.RankService;
 
 /**
  *
- * @authors Lavender & VaCris
+ * @authors Studios TKOH!
  */
 public class DonateBroadcastCommand implements CommandExecutor, TabCompleter {
 
-    private final WelcomeDonationsPlugin plugin;
+    private final PluginSettings settings;
+    private final Colorizer colorizer;
+    private final PackageCatalog packageCatalog;
+    private final DonationService donationService;
+    private final RankService rankService;
 
-    public DonateBroadcastCommand(WelcomeDonationsPlugin plugin) {
-        this.plugin = plugin;
+    public DonateBroadcastCommand(PluginSettings settings, Colorizer colorizer, PackageCatalog packageCatalog,
+            DonationService donationService, RankService rankService) {
+        this.settings = settings;
+        this.colorizer = colorizer;
+        this.packageCatalog = packageCatalog;
+        this.donationService = donationService;
+        this.rankService = rankService;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("wd.donate.broadcast")) {
-            sender.sendMessage(color(plugin.getConfig().getString("messages.no-permission")));
+            sender.sendMessage(colorizer.colorize(settings.message("no-permission", "&cNo tienes permiso.")));
             return true;
         }
         if (args.length < 2) {
-            sender.sendMessage(color(plugin.getConfig().getString("messages.usage-donate")));
+            sender.sendMessage(colorizer.colorize(settings.message("usage-donate", "&eUso: /donatebroadcast <jugador> <paquete> [monto]")));
             return true;
         }
 
         String player = args[0];
-        String item = args[1];
-        String amount = (args.length >= 3) ? args[2] : "";
-
-        ConfigurationSection pkgSec = plugin.getConfig().getConfigurationSection("packages." + item);
-        if (pkgSec != null) {
-            String type = pkgSec.getString("type", "donation").toLowerCase();
-
-            if ("rank".equals(type)) {
-                String rankName = pkgSec.getString("rank", item);
-                String fmt = pkgSec.getString("broadcast-format", plugin.getConfig().getString("ranks.format", "&6[Rango] &e%player% &fcompró &b%rank%"));
-                String msg = fmt.replace("%player%", player).replace("%rank%", rankName).replace("%amount%", amount);
-                Bukkit.broadcastMessage(color(msg));
-
-                String giveCmd = pkgSec.getString("give-command", "");
-                if (giveCmd != null && !giveCmd.isBlank()) {
-                    Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), giveCmd.replace("%player%", player).replace("%rank%", rankName).replace("%amount%", amount));
-                }
-
-                if (pkgSec.getBoolean("auto-forward-proxy", false)) {
-                    plugin.forwardRankViaProxy(player, rankName);
-                }
-            } else {
-                String labelPkg = pkgSec.getString("label", item);
-                String fmt = pkgSec.getString("broadcast-format", plugin.getConfig().getString("donations.format", "&6[Donación] &e%player% &fapoyó con &b%amount%"));
-                String msg = fmt.replace("%player%", player).replace("%item%", labelPkg).replace("%amount%", amount).replace("%monto%", amount);
-                Bukkit.broadcastMessage(color(msg));
-
-                if (pkgSec.getBoolean("auto-forward-proxy", false)) {
-                    plugin.forwardDonationViaProxy(player, labelPkg, amount);
-                }
-            }
+        String packageId = args[1];
+        String amount = args.length >= 3 ? args[2] : "";
+        Optional<PackageDefinition> definitionOpt = packageCatalog.find(packageId);
+        if (definitionOpt.isPresent()) {
+            handleDefinedPackage(definitionOpt.get(), player, amount);
+            return true;
+        }
+        if (settings.ranks().allowedRanks().contains(packageId)) {
+            donationService.broadcast(new DonationAnnouncement(player, "Rango " + packageId, ""));
         } else {
-            List<String> allowedRanks = plugin.getConfig().getStringList("ranks.allowed-ranks");
-            if (allowedRanks.contains(item)) {
-                plugin.broadcastDonation(player, "Rango " + item, "");
-            } else {
-                plugin.broadcastDonation(player, item, amount);
-            }
+            donationService.broadcast(new DonationAnnouncement(player, packageId, amount));
         }
         return true;
     }
 
-    private String color(String s) {
-        return ChatColor.translateAlternateColorCodes('&', s == null ? "" : s);
+    private void handleDefinedPackage(PackageDefinition definition, String player, String amount) {
+        switch (definition.type()) {
+            case RANK -> {
+                String rankName = definition.rankName() == null || definition.rankName().isEmpty()
+                        ? definition.displayLabel()
+                        : definition.rankName();
+                RankPurchase purchase = new RankPurchase(player, rankName, amount);
+                rankService.broadcast(purchase, definition.autoForwardProxy(), definition.broadcastFormat());
+                if (definition.hasGiveCommand()) {
+                    rankService.executeGiveCommand(purchase, definition.giveCommand());
+                }
+            }
+            case DONATION -> {
+                String label = definition.displayLabel() == null || definition.displayLabel().isEmpty()
+                        ? definition.id()
+                        : definition.displayLabel();
+                DonationAnnouncement announcement = new DonationAnnouncement(player, label, amount);
+                donationService.broadcast(announcement, definition.autoForwardProxy(), definition.broadcastFormat());
+            }
+        }
     }
 
-    // Tab complete (opcional)
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (!sender.hasPermission("wd.donate.broadcast")) {
             return Collections.emptyList();
         }
+        return switch (args.length) {
+            case 1 ->
+                Bukkit.getOnlinePlayers().stream()
+                .map(player -> player.getName())
+                .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
+                .collect(Collectors.toList());
 
-        switch (args.length) {
-            case 1 -> {
-                // sugerir jugadores online
-                return plugin.getServer().getOnlinePlayers().stream()
-                        .map(p -> p.getName())
-                        .filter(n -> n.toLowerCase().startsWith(args[0].toLowerCase()))
-                        .collect(Collectors.toList());
-            }
             case 2 -> {
-                // sugerir paquetes comunes
-                ConfigurationSection pkgs = plugin.getConfig().getConfigurationSection("packages");
-                if (pkgs == null) {
-                    return Collections.emptyList();
+                ConfigurationSection section = settings.packagesSection();
+                if (section == null) {
+                    yield Collections.emptyList();
                 }
-                List<String> sugerencias = new ArrayList<>(pkgs.getKeys(false));
-                return filtrar(sugerencias, args[1]);
-            }
-            case 3 -> {
-                // sugerir montos
-                List<String> montos = List.of("5USD", "10USD", "20USD");
-                return filtrar(montos, args[2]);
-            }
-            default -> {
-            }
-        }
+                List<String> suggestions = new ArrayList<>(section.getKeys(false));
+                suggestions.addAll(settings.ranks().allowedRanks());
+                yield filterByPrefix(suggestions, args[1]);
 
-        return Collections.emptyList();
+            }
+            case 3 ->
+                filterByPrefix(List.of("5USD", "10USD", "20USD"), args[2]);
+            default ->
+                Collections.emptyList();
+        };
     }
 
-    private List<String> filtrar(List<String> base, String pref) {
-        String p = pref.toLowerCase();
-        List<String> out = new ArrayList<>();
-        for (String s : base) {
-            if (s.toLowerCase().startsWith(p)) {
-                out.add(s);
+    private List<String> filterByPrefix(List<String> base, String prefix) {
+        String lower = prefix.toLowerCase();
+        List<String> result = new ArrayList<>();
+        for (String option : base) {
+            if (option.toLowerCase().startsWith(lower)) {
+                result.add(option);
             }
         }
-        return out;
+        return result;
     }
 
 }
