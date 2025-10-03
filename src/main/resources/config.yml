@@ -1,7 +1,8 @@
-# @authors Lavender
+# @authors Studios TKOH!
 # Rol de este servidor en tu red: AUTH | SPAWN | SURVIVAL
 server-role: SPAWN
 
+#Bienvenida formato
 welcome:
   enabled: true
   first-join:
@@ -20,14 +21,39 @@ welcome:
       enabled: false
     sound: "UI_TOAST_CHALLENGE_COMPLETE"
 
+#Donaciones formato
 donations:
   enabled: true
   format: "&6[Donación] &e%player% &fapoyó con &b%item% &f(&a%monto%&f) ¡Gracias!"
   sound: "ENTITY_VILLAGER_CELEBRATE"
   proxy-forward:
+    enabled: false  
+    target-servers: ["spawn", "survival"]
+    
+#Rango formato
+ranks:
+  enabled: true
+  format: "&6[Rango] &e%player% &fha comprado el rango &b%rank% ¡Disfruta tu nueva ventaja!"
+  sound: "ENTITY_PLAYER_LEVELUP"
+  proxy-forward:
     enabled: false
     target-servers: ["spawn", "survival"]
+  # Lista opcional de rangos permitidos (si no usas packages)
+  # Ejemplo:
+  # allowed-ranks: ["VIP", "MVP+"]
 
+# Aquí puedes definir paquetes que combinan mensaje + comando a ejecutar.
+# Ejemplo: vender rangos o ítems específicos desde la tienda web.
+# Formato de ejemplo incluido para referencia.
+packages:
+  #Tipo rango
+  ##rangoVip:
+  ##type: rank
+  ##rank: "Vip"
+  ##broadcast-format: "&6[Rango] &e%player% &fcompró el rango &b%rank%"
+  ##give-command: "lp user %player% parent add Vip"
+  ##auto-forward-proxy: true
+    
 messages:
   disabled-on-auth: "&7[WD] Este plugin está deshabilitado en servidores de AUTH."
   no-permission: "&cNo tienes permiso."
