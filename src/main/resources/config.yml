@@ -6,13 +6,16 @@ server-role: SPAWN
 welcome:
   enabled: true
   first-join:
-      enabled: false
+    enabled: false
     sound: "UI_TOAST_CHALLENGE_COMPLETE"
+    chat: "<gradient:blue:aqua>Bienvenido %player% al servidor!</gradient>" # Ejemplo MiniMessage
+  rejoin:
+    chat: "<gray>Hola de nuevo, <yellow>%player%</yellow>!"
 
 #Donaciones formato
 donations:
   enabled: true
-  format: "&6[Donación] &e%player% &fapoyó con &b%item% &f(&a%monto%&f) ¡Gracias!"
+  format: "<gradient:gold:yellow><bold>[Donación]</bold> <white>%player%</white> apoyó con <aqua>%item%</aqua> <green>(%monto%)</green> ¡Gracias!</gradient>"
   sound: "ENTITY_VILLAGER_CELEBRATE"
   proxy-forward:
     enabled: false  
@@ -27,8 +30,7 @@ ranks:
     enabled: false
     target-servers: ["spawn", "survival"]
   # Lista opcional de rangos permitidos (si no usas packages)
-  # Ejemplo:
-  # allowed-ranks: ["VIP", "MVP+"]
+  allowed-ranks: ["VIP", "MVP+"]
 
 # Aquí puedes definir paquetes que combinan mensaje + comando a ejecutar.
 # Ejemplo: vender rangos o ítems específicos desde la tienda web.
@@ -43,5 +45,6 @@ packages:
   ##auto-forward-proxy: true
     
 messages:
-  disabled-on-auth: "&7[WD] Este plugin está deshabilitado en servidores de AUTH."
-  no-permission: "&cNo tienes permiso."
+  disabled-on-auth: "<gray>[WD] Este plugin está deshabilitado en servidores de AUTH.</gray>"
+  no-permission: "<red>No tienes permiso.</red>"
+  usage-donate: "<yellow>Uso: /donatebroadcast <jugador> <paquete> [monto]</yellow>"
