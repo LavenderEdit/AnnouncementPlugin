@@ -1,21 +1,23 @@
-# Markdown for Netbeans ![Description Here](https://raw.githubusercontent.com/moacirrf/netbeans-markdown/main/images/nblogo48x48.png)
+# AdvancedAnnouncer
 
-***
+AdvancedAnnouncer is a modern Minecraft Java announcement plugin built as a Gradle multi-module project.
 
-## Description
-This plugin adds some additional features to Apache Netbeans Markdown Editor.
-- Preview
-- Split Windows
-- Suggestion
-- Export to DOCX, PDF and HTML
+## Project layout
 
-## Tables
+- `core-api`: public ports and contracts.
+- `core-domain`: pure announcement domain model and validation.
+- `application`: use cases and command orchestration.
+- `platform-common`: shared infrastructure utilities.
+- `platform-spigot`: Paper/Spigot bootstrap and adapters.
+- `legacy/welcomedonations-maven`: archived Maven implementation kept only as migration reference.
 
-| Header 1 | Header 2 |  Header 3 |
-|----------|----------|-----------|
-|   Col 1  |   Col 2  |   Col 3   |
+## Build
 
-## Checkboxes
+Use the Gradle Wrapper from the project root:
 
-- [x] Option 1
-- [ ] Option 2
+```powershell
+.\gradlew.bat test
+.\gradlew.bat :platform-spigot:build
+```
+
+The plugin artifact is produced by the `platform-spigot` module.
