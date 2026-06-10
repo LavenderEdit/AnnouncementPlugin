@@ -1,0 +1,23 @@
+# @authors Studios TKOH!
+name: WelcomeDonations
+main: org.lavender.wd.WelcomeDonationsPlugin
+version: 1.0.5
+api-version: '1.21'
+author: Lavender
+
+commands:
+  donatebroadcast:
+    description: Anuncia una donación globalmente.
+    usage: /ga <jugador> <paquete|motivo> [monto]
+    aliases: [ga,donar, donateannounce]
+    permission: wd.donate.broadcast
+
+permissions:
+  wd.admin:
+    description: Acceso a todos los comandos de administración.
+    default: op
+  wd.donate.broadcast:
+    description: Permite anunciar donaciones manualmente.
+    default: op
+
+softdepend: [Tebex, CraftingStore]

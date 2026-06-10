@@ -1,0 +1,57 @@
+name: AdvancedAnnouncer
+main: dev.studio.announcer.spigot.bootstrap.AdvancedAnnouncerPlugin
+version: ${version}
+api-version: '1.21'
+author: Lavender
+description: Modern multi-channel announcement engine for Paper, Spigot, and Folia-ready deployments.
+
+commands:
+  announcer:
+    description: AdvancedAnnouncer administration command.
+    usage: /announcer
+    aliases: [aa, advancedannouncer]
+    permission: announcer.admin
+
+permissions:
+  announcer.admin:
+    description: Full access to AdvancedAnnouncer administration commands.
+    default: op
+  announcer.editor:
+    description: Allows opening the future in-game announcement editor.
+    default: op
+  announcer.reload:
+    description: Allows reloading AdvancedAnnouncer configuration.
+    default: op
+  announcer.send:
+    description: Allows manually sending announcements.
+    default: op
+  announcer.preview:
+    description: Allows previewing announcements.
+    default: op
+  announcer.toggle:
+    description: Allows toggling announcements.
+    default: op
+  announcer.debug:
+    description: Allows viewing AdvancedAnnouncer debug state.
+    default: op
+  announcer.redis:
+    description: Allows Redis diagnostic commands.
+    default: op
+  announcer.discord:
+    description: Allows Discord diagnostic commands.
+    default: op
+  announcer.receive.alert:
+    description: Allows receiving alert announcements.
+    default: true
+  announcer.receive.vip:
+    description: Allows receiving VIP announcements.
+    default: false
+  announcer.bypass.cooldown:
+    description: Bypasses announcement cooldowns.
+    default: op
+
+softdepend:
+  - PlaceholderAPI
+  - SkinsRestorer
+  - DiscordSRV
+  - ProtocolLib

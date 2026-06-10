@@ -1,0 +1,35 @@
+language: en
+debug: false
+
+storage:
+  type: memory
+
+redis:
+  enabled: false
+
+discord:
+  enabled: false
+
+placeholderapi:
+  enabled: true
+
+skinsrestorer:
+  enabled: true
+
+metrics:
+  enabled: true
+
+update-checker:
+  enabled: true
+
+folia:
+  compatibility-mode: auto
+
+scheduler:
+  default-interval-seconds: 300
+
+defaults:
+  enabled: true
+  priority: 0
+  channels:
+    - CHAT
