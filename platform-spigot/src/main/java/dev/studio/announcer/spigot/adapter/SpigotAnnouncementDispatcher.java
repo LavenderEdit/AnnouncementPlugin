@@ -4,15 +4,20 @@ import dev.studio.announcer.api.message.MessageRenderer;
 import dev.studio.announcer.api.placeholder.PlaceholderContext;
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.DeliverySummary;
-import dev.studio.announcer.api.service.SchedulerPort;
 import dev.studio.announcer.api.service.SoundService;
+import dev.studio.announcer.api.service.ToastNotificationService;
 import dev.studio.announcer.domain.announcement.Announcement;
 import dev.studio.announcer.domain.announcement.AnnouncementChannel;
 import dev.studio.announcer.domain.announcement.option.ActionBarOptions;
+import dev.studio.announcer.domain.announcement.option.BossBarOptions;
 import dev.studio.announcer.domain.announcement.option.TitleOptions;
+import dev.studio.announcer.domain.announcement.option.ToastOptions;
+import dev.studio.announcer.spigot.service.PriorityActionBarService;
+import dev.studio.announcer.spigot.service.PriorityBossBarService;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
@@ -23,20 +28,26 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
     private final BukkitAudiences audiences;
     private final MessageRenderer<Component> renderer;
     private final SpigotAudienceProvider audienceProvider;
-    private final SchedulerPort scheduler;
     private final SoundService soundService;
+    private final PriorityActionBarService actionBarService;
+    private final PriorityBossBarService bossBarService;
+    private final ToastNotificationService toastNotificationService;
 
     public SpigotAnnouncementDispatcher(
             BukkitAudiences audiences,
             MessageRenderer<Component> renderer,
             SpigotAudienceProvider audienceProvider,
-            SchedulerPort scheduler,
-            SoundService soundService) {
+            SoundService soundService,
+            PriorityActionBarService actionBarService,
+            PriorityBossBarService bossBarService,
+            ToastNotificationService toastNotificationService) {
         this.audiences = audiences;
         this.renderer = renderer;
         this.audienceProvider = audienceProvider;
-        this.scheduler = scheduler;
         this.soundService = soundService;
+        this.actionBarService = actionBarService;
+        this.bossBarService = bossBarService;
+        this.toastNotificationService = toastNotificationService;
     }
 
     @Override
@@ -86,6 +97,12 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             sendActionBar(player, announcement, context);
             sent = true;
         }
+        if (announcement.channels().contains(AnnouncementChannel.BOSSBAR)) {
+            sent = sendBossBar(player, announcement, context) || sent;
+        }
+        if (announcement.channels().contains(AnnouncementChannel.TOAST)) {
+            sent = sendToast(player, announcement, context) || sent;
+        }
         if (announcement.channels().contains(AnnouncementChannel.SOUND)) {
             sent = announcement.soundOptions()
                     .map(options -> soundService.play(player.getUniqueId().toString(), options))
@@ -122,15 +139,66 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
                 announcement.priority(),
                 null,
                 Duration.ZERO));
-        audiences.player(player).sendActionBar(renderer.render(options.message(), context));
-        scheduler.scheduleOnce(
-                "actionbar-clear-" + player.getUniqueId() + "-" + announcement.id().value(),
-                options.duration(),
-                () -> audiences.player(player).sendActionBar(Component.empty()));
+        if (options.permissionValue().map(player::hasPermission).orElse(true)) {
+            actionBarService.show(
+                    player.getUniqueId().toString(),
+                    announcement.id().value(),
+                    renderer.render(options.message(), context),
+                    options.priority(),
+                    options.duration(),
+                    options.antiSpamWindow());
+        }
+    }
+
+    private boolean sendBossBar(Player player, Announcement announcement, PlaceholderContext context) {
+        BossBarOptions options = announcement.bossBarOptions().orElseGet(() -> new BossBarOptions(
+                fallbackVisualText(announcement),
+                dev.studio.announcer.domain.announcement.option.BossBarColor.WHITE,
+                dev.studio.announcer.domain.announcement.option.BossBarOverlay.PROGRESS,
+                1.0f,
+                Duration.ofSeconds(3),
+                announcement.priority(),
+                null,
+                false,
+                true));
+        if (options.permissionValue().map(player::hasPermission).orElse(true)) {
+            BossBar bossBar = BossBar.bossBar(
+                    renderer.render(options.title(), context),
+                    options.progress(),
+                    BossBar.Color.valueOf(options.color().name()),
+                    BossBar.Overlay.valueOf(options.overlay().name()));
+            bossBarService.show(
+                    player.getUniqueId().toString(),
+                    announcement.id().value(),
+                    bossBar,
+                    options.priority(),
+                    options.duration(),
+                    options.animatedProgress(),
+                    options.autoHide());
+            return true;
+        }
+        return false;
+    }
+
+    private boolean sendToast(Player player, Announcement announcement, PlaceholderContext context) {
+        ToastOptions options = announcement.toastOptions().orElse(null);
+        if (options == null || !options.enabled()) {
+            return false;
+        }
+        if (options.permissionValue().map(player::hasPermission).orElse(true)) {
+            toastNotificationService.showToast(player.getUniqueId().toString(), options, context);
+            return true;
+        }
+        return false;
     }
 
     private String firstMessage(Announcement announcement) {
         return announcement.messages().isEmpty() ? "" : announcement.messages().getFirst();
+    }
+
+    private String fallbackVisualText(Announcement announcement) {
+        String message = firstMessage(announcement);
+        return message.isBlank() ? announcement.name() : message;
     }
 
     private PlaceholderContext contextFor(Player player, Announcement announcement) {

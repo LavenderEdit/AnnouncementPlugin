@@ -55,3 +55,4 @@ softdepend:
   - SkinsRestorer
   - DiscordSRV
   - ProtocolLib
+  - PacketEvents
