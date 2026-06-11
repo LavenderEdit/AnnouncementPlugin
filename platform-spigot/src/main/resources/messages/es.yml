@@ -1,0 +1,8 @@
+reload-success: "<green>Configuracion recargada.</green>"
+reload-error: "<red>No se pudo recargar la configuracion.</red>"
+no-permission: "<red>No tienes permiso.</red>"
+migration-success: "<green>Configuracion legacy migrada.</green>"
+migration-error: "<red>No se pudo migrar la configuracion legacy.</red>"
+editor-console-only: "<red>El editor solo puede abrirse dentro del juego.</red>"
+editor-saved: "<green>Cambios guardados y configuracion recargada.</green>"
+editor-cancelled: "<yellow>Cambios del editor descartados.</yellow>"
