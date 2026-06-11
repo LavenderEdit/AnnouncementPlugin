@@ -5,11 +5,15 @@ import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementEditorService;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.AnnouncementSchedulerService;
+import dev.studio.announcer.api.service.DiscordBridgeService;
+import dev.studio.announcer.api.service.NetworkBroadcastService;
 import dev.studio.announcer.api.service.SchedulerPort;
 import dev.studio.announcer.api.service.SoundService;
 import dev.studio.announcer.api.service.ToastNotificationService;
 import dev.studio.announcer.application.command.AnnouncerCommandService;
 import dev.studio.announcer.application.usecase.CreateAnnouncementUseCase;
+import dev.studio.announcer.application.usecase.HandleDiscordInboundUseCase;
+import dev.studio.announcer.application.usecase.HandleNetworkBroadcastUseCase;
 import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
 import dev.studio.announcer.application.usecase.PreviewAnnouncementUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
@@ -25,13 +29,25 @@ import dev.studio.announcer.common.config.LegacyConfigurationMigrationService;
 import dev.studio.announcer.common.config.LegacyWelcomeDonationsMigrator;
 import dev.studio.announcer.common.config.YamlConfigurationReloadService;
 import dev.studio.announcer.common.config.YamlAnnouncementRepository;
+import dev.studio.announcer.common.discord.CompositeDiscordBridgeService;
+import dev.studio.announcer.common.discord.DiscordWebhookBridgeService;
+import dev.studio.announcer.common.discord.DiscordWebhookSettings;
 import dev.studio.announcer.common.message.InternalPlaceholderResolver;
 import dev.studio.announcer.common.message.MiniMessageComponentRenderer;
+import dev.studio.announcer.common.network.JacksonNetworkBroadcastCodec;
+import dev.studio.announcer.common.network.LettuceRedisPubSubClient;
+import dev.studio.announcer.common.network.NetworkTargetFilter;
+import dev.studio.announcer.common.network.RedisNetworkBroadcastService;
 import dev.studio.announcer.common.scheduler.DefaultAnnouncementSchedulerService;
+import dev.studio.announcer.common.service.NoopDiscordBridgeService;
+import dev.studio.announcer.common.service.NoopNetworkBroadcastService;
 import dev.studio.announcer.spigot.adapter.SpigotAnnouncementDispatcher;
 import dev.studio.announcer.spigot.adapter.SpigotAudienceProvider;
 import dev.studio.announcer.spigot.avatar.SpigotProfileAvatarTextureSource;
 import dev.studio.announcer.spigot.command.AnnouncerCommand;
+import dev.studio.announcer.spigot.discord.DiscordSrvBridgeService;
+import dev.studio.announcer.spigot.discord.DiscordSrvEventForwarder;
+import dev.studio.announcer.spigot.discord.DiscordSrvSettings;
 import dev.studio.announcer.spigot.gui.AnvilTextInputService;
 import dev.studio.announcer.spigot.gui.SpigotAnnouncementEditorService;
 import dev.studio.announcer.spigot.listener.NotificationCleanupListener;
@@ -51,6 +67,9 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class AdvancedAnnouncerPlugin extends JavaPlugin {
     private BukkitAudiences audiences;
@@ -58,6 +77,9 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
     private AnnouncementDispatcher announcementDispatcher;
     private SchedulerPort scheduler;
     private SoundService soundService;
+    private NetworkBroadcastService networkBroadcastService;
+    private DiscordBridgeService discordBridgeService;
+    private AutoCloseable discordSrvForwarder;
     private ToastNotificationService toastNotificationService;
     private AvatarService avatarService;
     private AnnouncementEditorService announcementEditorService;
@@ -85,7 +107,6 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         announcementRepository = yamlAnnouncementRepository;
         scheduler = new BukkitFoliaScheduler(this);
         soundService = new SpigotSoundService();
-        platformStatusService = new SpigotPlatformStatusService();
         SpigotPlaceholderResolver placeholderResolver = new SpigotPlaceholderResolver(
                 new InternalPlaceholderResolver(),
                 PlaceholderApiBridge.detect());
@@ -96,6 +117,8 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         avatarService = new CachedAvatarService(
                 new InMemoryAvatarCacheStore(),
                 new SpigotProfileAvatarTextureSource());
+        String serverId = getConfig().getString("server.id", getServer().getName().toLowerCase(java.util.Locale.ROOT));
+        Set<String> serverGroups = stringSet(getConfig().getStringList("server.groups"));
         announcementDispatcher = new SpigotAnnouncementDispatcher(
                 audiences,
                 renderer,
@@ -103,7 +126,32 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 soundService,
                 actionBarService,
                 bossBarService,
-                toastNotificationService);
+                toastNotificationService,
+                serverGroups);
+        networkBroadcastService = createNetworkBroadcastService();
+        HandleNetworkBroadcastUseCase handleNetworkBroadcastUseCase = new HandleNetworkBroadcastUseCase(
+                announcementDispatcher,
+                new NetworkTargetFilter(
+                        serverId,
+                        serverGroups,
+                        getConfig().getBoolean("redis.ignore-self", true))::accepts);
+        networkBroadcastService.setHandler(request -> scheduler.scheduleOnce(
+                "network-inbound-" + request.messageId(),
+                Duration.ZERO,
+                () -> handleNetworkBroadcastUseCase.handle(request)));
+        discordBridgeService = createDiscordBridgeService();
+        HandleDiscordInboundUseCase handleDiscordInboundUseCase = new HandleDiscordInboundUseCase(
+                announcementDispatcher,
+                getConfig().getString(
+                        "discord.discordsrv.minecraft-format",
+                        "<aqua>%discord_user%</aqua>: <white>%discord_message%</white>"));
+        discordBridgeService.setInboundHandler(message -> scheduler.scheduleOnce(
+                "discord-inbound-" + message.userId() + "-" + message.createdAt().toEpochMilli(),
+                Duration.ZERO,
+                () -> handleDiscordInboundUseCase.handle(message)));
+        platformStatusService = new SpigotPlatformStatusService(
+                () -> networkBroadcastService != null && networkBroadcastService.connected(),
+                () -> discordBridgeService != null && discordBridgeService.enabled());
         announcementSchedulerService = new DefaultAnnouncementSchedulerService(scheduler, announcementDispatcher);
         announcementSchedulerService.reschedule(announcementRepository.findAll());
         createAnnouncementUseCase = new CreateAnnouncementUseCase(announcementRepository);
@@ -135,7 +183,9 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 announcementDispatcher,
                 platformStatusService,
                 reloadConfigurationUseCase,
-                migrateLegacyConfigurationUseCase);
+                migrateLegacyConfigurationUseCase,
+                networkBroadcastService,
+                discordBridgeService);
 
         registerCommands();
         getServer().getPluginManager().registerEvents(
@@ -151,6 +201,18 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
     public void onDisable() {
         if (toastNotificationService instanceof AutoCloseable closeable) {
             closeQuietly(closeable);
+        }
+        if (discordSrvForwarder != null) {
+            closeQuietly(discordSrvForwarder);
+            discordSrvForwarder = null;
+        }
+        if (discordBridgeService != null) {
+            closeQuietly(discordBridgeService);
+            discordBridgeService = null;
+        }
+        if (networkBroadcastService != null) {
+            closeQuietly(networkBroadcastService);
+            networkBroadcastService = null;
         }
         if (announcementSchedulerService != null) {
             closeQuietly(announcementSchedulerService);
@@ -192,6 +254,70 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
             return dataFolderLegacy;
         }
         return Path.of("legacy", "welcomedonations-maven", "src", "main", "resources", "config.yml");
+    }
+
+    private NetworkBroadcastService createNetworkBroadcastService() {
+        if (!getConfig().getBoolean("redis.enabled", false)) {
+            return new NoopNetworkBroadcastService();
+        }
+        try {
+            return new RedisNetworkBroadcastService(
+                    new LettuceRedisPubSubClient(getConfig().getString("redis.uri", "redis://localhost:6379")),
+                    new JacksonNetworkBroadcastCodec(),
+                    getConfig().getString("redis.channel", "advanced_announcer:broadcast"));
+        } catch (RuntimeException ex) {
+            getLogger().warning("Redis integration disabled after connection failure: " + ex.getMessage());
+            return new NoopNetworkBroadcastService();
+        }
+    }
+
+    private DiscordBridgeService createDiscordBridgeService() {
+        DiscordBridgeService webhook = createDiscordWebhookBridgeService();
+        DiscordSrvBridgeService discordSrv = createDiscordSrvBridgeService();
+        if (discordSrv.enabled() && getServer().getPluginManager().getPlugin("DiscordSRV") != null) {
+            DiscordSrvEventForwarder forwarder = new DiscordSrvEventForwarder(discordSrv);
+            forwarder.register();
+            discordSrvForwarder = forwarder;
+        }
+        return new CompositeDiscordBridgeService(webhook, discordSrv.enabled() ? discordSrv : new NoopDiscordBridgeService());
+    }
+
+    private DiscordBridgeService createDiscordWebhookBridgeService() {
+        if (!getConfig().getBoolean("discord.enabled", false)
+                || !getConfig().getBoolean("discord.webhook.enabled", false)) {
+            return new NoopDiscordBridgeService();
+        }
+        return new DiscordWebhookBridgeService(new DiscordWebhookSettings(
+                getConfig().getString("discord.webhook.url", ""),
+                getConfig().getString("discord.webhook.username", "AdvancedAnnouncer"),
+                getConfig().getInt("discord.webhook.color", 0xF6C344),
+                getConfig().getString("discord.webhook.footer", ""),
+                getConfig().getString("discord.webhook.thumbnail-url", ""),
+                getConfig().getBoolean("discord.webhook.timestamp", true)));
+    }
+
+    private DiscordSrvBridgeService createDiscordSrvBridgeService() {
+        boolean enabled = getConfig().getBoolean("discord.enabled", false)
+                && getConfig().getBoolean("discord.discordsrv.enabled", false)
+                && getServer().getPluginManager().getPlugin("DiscordSRV") != null;
+        return new DiscordSrvBridgeService(new DiscordSrvSettings(
+                enabled,
+                stringSet(getConfig().getStringList("discord.discordsrv.channel-whitelist")),
+                stringSet(getConfig().getStringList("discord.discordsrv.allowed-role-ids")),
+                Duration.ofSeconds(getConfig().getLong("discord.discordsrv.cooldown-seconds", 3L)),
+                getConfig().getString(
+                        "discord.discordsrv.minecraft-format",
+                        "<aqua>%discord_user%</aqua>: <white>%discord_message%</white>")));
+    }
+
+    private Set<String> stringSet(java.util.List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of();
+        }
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private void closeQuietly(AutoCloseable closeable) {
