@@ -7,6 +7,8 @@ import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
+import dev.studio.announcer.api.service.DiscordBridgeService;
+import dev.studio.announcer.api.service.NetworkBroadcastService;
 import dev.studio.announcer.api.service.PlatformStatusService;
 import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
@@ -19,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 class AnnouncerCommandServiceTest {
@@ -64,12 +68,29 @@ class AnnouncerCommandServiceTest {
     }
 
     @Test
-    void redisAndDiscordTestAreExplicitlyDisabledInPhaseTwo() {
+    void redisAndDiscordTestReportDisabledByDefault() {
         AnnouncerCommandService service = service(new FakeRepository(), new FakeDispatcher());
 
-        assertEquals(CommandOutcome.success("Redis is disabled or not configured in this phase."),
+        assertEquals(CommandOutcome.success("Redis is disabled or not connected."),
                 service.handle(CommandRequest.console("redis", "test")));
-        assertEquals(CommandOutcome.success("Discord is disabled or not configured in this phase."),
+        assertEquals(CommandOutcome.success("Discord is disabled or not configured."),
+                service.handle(CommandRequest.console("discord", "test")));
+    }
+
+    @Test
+    void redisAndDiscordTestReportConnectedServices() {
+        AnnouncerCommandService service = new AnnouncerCommandService(
+                new FakeRepository(),
+                new FakeDispatcher(),
+                new FakeStatus(),
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
+                new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated.")),
+                new FakeNetwork(true),
+                new FakeDiscord(true));
+
+        assertEquals(CommandOutcome.success("Redis connection is available."),
+                service.handle(CommandRequest.console("redis", "test")));
+        assertEquals(CommandOutcome.success("Discord test request sent."),
                 service.handle(CommandRequest.console("discord", "test")));
     }
 
@@ -180,6 +201,60 @@ class AnnouncerCommandServiceTest {
         @Override
         public boolean discordEnabled() {
             return false;
+        }
+    }
+
+    private static final class FakeNetwork implements NetworkBroadcastService {
+        private final boolean connected;
+
+        private FakeNetwork(boolean connected) {
+            this.connected = connected;
+        }
+
+        @Override
+        public CompletableFuture<Void> publish(dev.studio.announcer.api.network.NetworkBroadcastRequest request) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public void setHandler(Consumer<dev.studio.announcer.api.network.NetworkBroadcastRequest> handler) {
+        }
+
+        @Override
+        public boolean connected() {
+            return connected;
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    private static final class FakeDiscord implements DiscordBridgeService {
+        private final boolean enabled;
+        private final List<dev.studio.announcer.api.discord.DiscordOutboundMessage> sent = new ArrayList<>();
+
+        private FakeDiscord(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        @Override
+        public CompletableFuture<Void> send(dev.studio.announcer.api.discord.DiscordOutboundMessage message) {
+            sent.add(message);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public void setInboundHandler(Consumer<dev.studio.announcer.api.discord.DiscordInboundMessage> handler) {
+        }
+
+        @Override
+        public boolean enabled() {
+            return enabled;
+        }
+
+        @Override
+        public void close() {
         }
     }
 }
