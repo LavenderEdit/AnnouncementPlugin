@@ -1,0 +1,21 @@
+title: "<gold>Announcement Editor</gold>"
+page-size: 45
+actions:
+  create:
+    material: EMERALD
+    name: "<green>Crear</green>"
+  preview:
+    material: ENDER_EYE
+    name: "<aqua>Previsualizar</aqua>"
+  duplicate:
+    material: NAME_TAG
+    name: "<yellow>Duplicar</yellow>"
+  toggle-enabled:
+    material: LIME_DYE
+    name: "<green>Activar/Pausar</green>"
+  delete:
+    material: REDSTONE_BLOCK
+    name: "<red>Eliminar</red>"
+  confirm-delete:
+    material: RED_CONCRETE
+    name: "<red>Confirmar</red>"
