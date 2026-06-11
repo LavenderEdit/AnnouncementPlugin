@@ -1,9 +1,21 @@
 package dev.studio.announcer.spigot.service;
 
 import dev.studio.announcer.api.service.PlatformStatusService;
+import java.util.function.BooleanSupplier;
 import org.bukkit.Bukkit;
 
 public final class SpigotPlatformStatusService implements PlatformStatusService {
+    private final BooleanSupplier redisEnabled;
+    private final BooleanSupplier discordEnabled;
+
+    public SpigotPlatformStatusService() {
+        this(() -> false, () -> false);
+    }
+
+    public SpigotPlatformStatusService(BooleanSupplier redisEnabled, BooleanSupplier discordEnabled) {
+        this.redisEnabled = redisEnabled == null ? () -> false : redisEnabled;
+        this.discordEnabled = discordEnabled == null ? () -> false : discordEnabled;
+    }
 
     @Override
     public String platformName() {
@@ -32,11 +44,11 @@ public final class SpigotPlatformStatusService implements PlatformStatusService 
 
     @Override
     public boolean redisEnabled() {
-        return false;
+        return redisEnabled.getAsBoolean();
     }
 
     @Override
     public boolean discordEnabled() {
-        return false;
+        return discordEnabled.getAsBoolean();
     }
 }
