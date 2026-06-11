@@ -1,0 +1,10 @@
+announcements:
+  join_welcome:
+    name: Join Welcome
+    enabled: false
+    type: EVENT_JOIN
+    channels:
+      - CHAT
+    messages:
+      - "<gray>Hello <yellow>{player_name}</yellow>!</gray>"
+    priority: 0

@@ -1,0 +1,11 @@
+announcements:
+  welcome:
+    name: Welcome
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+    messages:
+      - "<green>Welcome to the server, {player_name}!</green>"
+    priority: 0
+    interval: PT5M
