@@ -41,6 +41,7 @@ import dev.studio.announcer.common.network.RedisNetworkBroadcastService;
 import dev.studio.announcer.common.scheduler.DefaultAnnouncementSchedulerService;
 import dev.studio.announcer.common.service.NoopDiscordBridgeService;
 import dev.studio.announcer.common.service.NoopNetworkBroadcastService;
+import dev.studio.announcer.domain.validation.ValidationResult;
 import dev.studio.announcer.spigot.adapter.SpigotAnnouncementDispatcher;
 import dev.studio.announcer.spigot.adapter.SpigotAudienceProvider;
 import dev.studio.announcer.spigot.avatar.SpigotProfileAvatarTextureSource;
@@ -86,6 +87,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
     private AnnouncementSchedulerService announcementSchedulerService;
     private PriorityActionBarService actionBarService;
     private PriorityBossBarService bossBarService;
+    private ConfigurationValidationService configurationValidationService;
     private SpigotPlatformStatusService platformStatusService;
     private CreateAnnouncementUseCase createAnnouncementUseCase;
     private SendAnnouncementUseCase sendAnnouncementUseCase;
@@ -111,6 +113,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new InternalPlaceholderResolver(),
                 PlaceholderApiBridge.detect());
         MiniMessageComponentRenderer renderer = new MiniMessageComponentRenderer(placeholderResolver);
+        configurationValidationService = new ConfigurationValidationService(renderer);
         actionBarService = new PriorityActionBarService(new AdventureActionBarSender(audiences), scheduler);
         bossBarService = new PriorityBossBarService(new AdventureBossBarSender(audiences), scheduler);
         toastNotificationService = new ScheduledToastNotificationService(new BukkitToastSender(this), renderer, scheduler);
@@ -150,6 +153,8 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 Duration.ZERO,
                 () -> handleDiscordInboundUseCase.handle(message)));
         platformStatusService = new SpigotPlatformStatusService(
+                getDescription().getVersion(),
+                () -> announcementSchedulerService != null,
                 () -> networkBroadcastService != null && networkBroadcastService.connected(),
                 () -> discordBridgeService != null && discordBridgeService.enabled());
         announcementSchedulerService = new DefaultAnnouncementSchedulerService(scheduler, announcementDispatcher);
@@ -161,8 +166,9 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         YamlConfigurationReloadService reloadService = new YamlConfigurationReloadService(
                 configurationPaths,
                 yamlAnnouncementRepository,
-                new ConfigurationValidationService(renderer),
-                announcementSchedulerService);
+                configurationValidationService,
+                announcementSchedulerService,
+                this::reloadConfig);
         reloadConfigurationUseCase = new ReloadConfigurationUseCase(reloadService);
         migrateLegacyConfigurationUseCase = new MigrateLegacyConfigurationUseCase(new LegacyConfigurationMigrationService(
                 legacyConfigPath(configurationPaths),
@@ -194,7 +200,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);
         }
-        getLogger().info("AdvancedAnnouncer Phase 4 bootstrap enabled.");
+        getLogger().info("AdvancedAnnouncer enabled.");
     }
 
     @Override
@@ -260,6 +266,15 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         if (!getConfig().getBoolean("redis.enabled", false)) {
             return new NoopNetworkBroadcastService();
         }
+        ValidationResult validation = configurationValidationService.validateRedisSettings(
+                true,
+                getConfig().getString("redis.uri", "redis://localhost:6379"),
+                getConfig().getString("redis.channel", "advanced_announcer:broadcast"),
+                getConfig().getLong("redis.reconnect-delay-seconds", 5L));
+        if (!validation.valid()) {
+            validation.errors().forEach(error -> getLogger().warning("Redis integration disabled: " + error));
+            return new NoopNetworkBroadcastService();
+        }
         try {
             return new RedisNetworkBroadcastService(
                     new LettuceRedisPubSubClient(getConfig().getString("redis.uri", "redis://localhost:6379")),
@@ -287,6 +302,18 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 || !getConfig().getBoolean("discord.webhook.enabled", false)) {
             return new NoopDiscordBridgeService();
         }
+        ValidationResult validation = configurationValidationService.validateDiscordSettings(
+                true,
+                true,
+                getConfig().getString("discord.webhook.url", ""),
+                getConfig().getString(
+                        "discord.discordsrv.minecraft-format",
+                        "<aqua>%discord_user%</aqua>: <white>%discord_message%</white>"),
+                getConfig().getLong("discord.discordsrv.cooldown-seconds", 3L));
+        if (!validation.valid()) {
+            validation.errors().forEach(error -> getLogger().warning("Discord webhook integration disabled: " + error));
+            return new NoopDiscordBridgeService();
+        }
         return new DiscordWebhookBridgeService(new DiscordWebhookSettings(
                 getConfig().getString("discord.webhook.url", ""),
                 getConfig().getString("discord.webhook.username", "AdvancedAnnouncer"),
@@ -300,6 +327,18 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         boolean enabled = getConfig().getBoolean("discord.enabled", false)
                 && getConfig().getBoolean("discord.discordsrv.enabled", false)
                 && getServer().getPluginManager().getPlugin("DiscordSRV") != null;
+        ValidationResult validation = configurationValidationService.validateDiscordSettings(
+                getConfig().getBoolean("discord.enabled", false),
+                false,
+                "",
+                getConfig().getString(
+                        "discord.discordsrv.minecraft-format",
+                        "<aqua>%discord_user%</aqua>: <white>%discord_message%</white>"),
+                getConfig().getLong("discord.discordsrv.cooldown-seconds", 3L));
+        if (!validation.valid()) {
+            validation.errors().forEach(error -> getLogger().warning("DiscordSRV integration disabled: " + error));
+            enabled = false;
+        }
         return new DiscordSrvBridgeService(new DiscordSrvSettings(
                 enabled,
                 stringSet(getConfig().getStringList("discord.discordsrv.channel-whitelist")),
