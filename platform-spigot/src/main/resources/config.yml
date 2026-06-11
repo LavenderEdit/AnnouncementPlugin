@@ -2,14 +2,38 @@ config-version: 1
 language: en
 debug: false
 
+server:
+  id: "server-01"
+  groups:
+    - "default"
+
 storage:
   type: yaml
 
 redis:
   enabled: false
+  uri: "redis://localhost:6379"
+  channel: "advanced_announcer:broadcast"
+  ignore-self: true
+  reconnect-delay-seconds: 5
+  publish-scheduled-network-announcements: false
 
 discord:
   enabled: false
+  webhook:
+    enabled: false
+    url: ""
+    username: "AdvancedAnnouncer"
+    color: 16171844
+    footer: ""
+    thumbnail-url: ""
+    timestamp: true
+  discordsrv:
+    enabled: false
+    channel-whitelist: []
+    allowed-role-ids: []
+    cooldown-seconds: 3
+    minecraft-format: "<aqua>%discord_user%</aqua>: <white>%discord_message%</white>"
 
 placeholderapi:
   enabled: true
