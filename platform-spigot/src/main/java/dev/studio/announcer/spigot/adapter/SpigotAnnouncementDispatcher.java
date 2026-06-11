@@ -17,6 +17,8 @@ import dev.studio.announcer.spigot.service.PriorityBossBarService;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
@@ -32,6 +34,7 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
     private final PriorityActionBarService actionBarService;
     private final PriorityBossBarService bossBarService;
     private final ToastNotificationService toastNotificationService;
+    private final Set<String> serverGroups;
 
     public SpigotAnnouncementDispatcher(
             BukkitAudiences audiences,
@@ -41,6 +44,26 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             PriorityActionBarService actionBarService,
             PriorityBossBarService bossBarService,
             ToastNotificationService toastNotificationService) {
+        this(
+                audiences,
+                renderer,
+                audienceProvider,
+                soundService,
+                actionBarService,
+                bossBarService,
+                toastNotificationService,
+                Set.of());
+    }
+
+    public SpigotAnnouncementDispatcher(
+            BukkitAudiences audiences,
+            MessageRenderer<Component> renderer,
+            SpigotAudienceProvider audienceProvider,
+            SoundService soundService,
+            PriorityActionBarService actionBarService,
+            PriorityBossBarService bossBarService,
+            ToastNotificationService toastNotificationService,
+            Set<String> serverGroups) {
         this.audiences = audiences;
         this.renderer = renderer;
         this.audienceProvider = audienceProvider;
@@ -48,6 +71,7 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
         this.actionBarService = actionBarService;
         this.bossBarService = bossBarService;
         this.toastNotificationService = toastNotificationService;
+        this.serverGroups = serverGroups == null ? Set.of() : serverGroups;
     }
 
     @Override
@@ -204,8 +228,10 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
     private PlaceholderContext contextFor(Player player, Announcement announcement) {
         return PlaceholderContext.of(Map.of(
                 "player_name", player.getName(),
+                "player_displayname", player.getDisplayName(),
                 "player_uuid", player.getUniqueId().toString(),
                 "server_name", Bukkit.getServer().getName().toLowerCase(Locale.ROOT),
+                "server_group", serverGroups.stream().sorted().collect(Collectors.joining(",")),
                 "online_players", Integer.toString(Bukkit.getOnlinePlayers().size()),
                 "max_players", Integer.toString(Bukkit.getMaxPlayers()),
                 "world", player.getWorld().getName(),
