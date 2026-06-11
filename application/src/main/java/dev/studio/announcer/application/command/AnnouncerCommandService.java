@@ -1,9 +1,12 @@
 package dev.studio.announcer.application.command;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
+import dev.studio.announcer.api.discord.DiscordOutboundMessage;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
+import dev.studio.announcer.api.service.DiscordBridgeService;
+import dev.studio.announcer.api.service.NetworkBroadcastService;
 import dev.studio.announcer.api.service.PlatformStatusService;
 import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
@@ -17,6 +20,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 public final class AnnouncerCommandService {
     private final AnnouncementRepository repository;
@@ -24,6 +29,8 @@ public final class AnnouncerCommandService {
     private final PlatformStatusService statusService;
     private final ReloadConfigurationUseCase reloadConfigurationUseCase;
     private final MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase;
+    private final NetworkBroadcastService networkBroadcastService;
+    private final DiscordBridgeService discordBridgeService;
 
     public AnnouncerCommandService(
             AnnouncementRepository repository,
@@ -36,7 +43,9 @@ public final class AnnouncerCommandService {
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")),
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
                         "Legacy migration service is not configured.",
-                        List.of("No platform migration service was provided."))));
+                        List.of("No platform migration service was provided."))),
+                new DisabledNetworkBroadcastService(),
+                new DisabledDiscordBridgeService());
     }
 
     public AnnouncerCommandService(
@@ -51,7 +60,9 @@ public final class AnnouncerCommandService {
                 reloadConfigurationUseCase,
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
                         "Legacy migration service is not configured.",
-                        List.of("No platform migration service was provided."))));
+                        List.of("No platform migration service was provided."))),
+                new DisabledNetworkBroadcastService(),
+                new DisabledDiscordBridgeService());
     }
 
     public AnnouncerCommandService(
@@ -60,6 +71,24 @@ public final class AnnouncerCommandService {
             PlatformStatusService statusService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase) {
+        this(
+                repository,
+                dispatcher,
+                statusService,
+                reloadConfigurationUseCase,
+                migrateLegacyConfigurationUseCase,
+                new DisabledNetworkBroadcastService(),
+                new DisabledDiscordBridgeService());
+    }
+
+    public AnnouncerCommandService(
+            AnnouncementRepository repository,
+            AnnouncementDispatcher dispatcher,
+            PlatformStatusService statusService,
+            ReloadConfigurationUseCase reloadConfigurationUseCase,
+            MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase,
+            NetworkBroadcastService networkBroadcastService,
+            DiscordBridgeService discordBridgeService) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.statusService = Objects.requireNonNull(statusService, "statusService");
@@ -67,6 +96,8 @@ public final class AnnouncerCommandService {
         this.migrateLegacyConfigurationUseCase = Objects.requireNonNull(
                 migrateLegacyConfigurationUseCase,
                 "migrateLegacyConfigurationUseCase");
+        this.networkBroadcastService = Objects.requireNonNull(networkBroadcastService, "networkBroadcastService");
+        this.discordBridgeService = Objects.requireNonNull(discordBridgeService, "discordBridgeService");
     }
 
     public CommandOutcome handle(CommandRequest request) {
@@ -87,8 +118,8 @@ public final class AnnouncerCommandService {
                 case "preview" -> preview(request);
                 case "reload" -> reload();
                 case "migrate" -> migrate();
-                case "redis" -> diagnostic(request, "redis", "Redis is disabled or not configured in this phase.");
-                case "discord" -> diagnostic(request, "discord", "Discord is disabled or not configured in this phase.");
+                case "redis" -> redisDiagnostic(request);
+                case "discord" -> discordDiagnostic(request);
                 default -> help();
             };
         } catch (IllegalArgumentException | AnnouncementNotFoundException ex) {
@@ -211,6 +242,28 @@ public final class AnnouncerCommandService {
         return CommandOutcome.error("Usage: /announcer " + name + " test");
     }
 
+    private CommandOutcome redisDiagnostic(CommandRequest request) {
+        if (request.arguments().size() >= 2 && "test".equalsIgnoreCase(request.argument(1))) {
+            return CommandOutcome.success(networkBroadcastService.connected()
+                    ? "Redis connection is available."
+                    : "Redis is disabled or not connected.");
+        }
+        return CommandOutcome.error("Usage: /announcer redis test");
+    }
+
+    private CommandOutcome discordDiagnostic(CommandRequest request) {
+        if (request.arguments().size() >= 2 && "test".equalsIgnoreCase(request.argument(1))) {
+            if (!discordBridgeService.enabled()) {
+                return CommandOutcome.success("Discord is disabled or not configured.");
+            }
+            discordBridgeService.send(new DiscordOutboundMessage(
+                    "AdvancedAnnouncer Test",
+                    "Discord integration test request sent from AdvancedAnnouncer."));
+            return CommandOutcome.success("Discord test request sent.");
+        }
+        return CommandOutcome.error("Usage: /announcer discord test");
+    }
+
     private CommandOutcome help() {
         return CommandOutcome.success(List.of(
                 "AdvancedAnnouncer commands:",
@@ -230,6 +283,46 @@ public final class AnnouncerCommandService {
     private void requireArgs(CommandRequest request, int count, String usage) {
         if (request.arguments().size() < count) {
             throw new IllegalArgumentException(usage);
+        }
+    }
+
+    private static final class DisabledNetworkBroadcastService implements NetworkBroadcastService {
+        @Override
+        public CompletableFuture<Void> publish(dev.studio.announcer.api.network.NetworkBroadcastRequest request) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Network broadcast service is disabled."));
+        }
+
+        @Override
+        public void setHandler(Consumer<dev.studio.announcer.api.network.NetworkBroadcastRequest> handler) {
+        }
+
+        @Override
+        public boolean connected() {
+            return false;
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    private static final class DisabledDiscordBridgeService implements DiscordBridgeService {
+        @Override
+        public CompletableFuture<Void> send(dev.studio.announcer.api.discord.DiscordOutboundMessage message) {
+            return CompletableFuture.failedFuture(new IllegalStateException("Discord bridge is disabled."));
+        }
+
+        @Override
+        public void setInboundHandler(Consumer<dev.studio.announcer.api.discord.DiscordInboundMessage> handler) {
+        }
+
+        @Override
+        public boolean enabled() {
+            return false;
+        }
+
+        @Override
+        public void close() {
         }
     }
 }
