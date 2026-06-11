@@ -25,6 +25,8 @@ tasks.processResources {
 }
 
 tasks.jar {
+    dependsOn(configurations.runtimeClasspath)
+
     archiveBaseName.set("AdvancedAnnouncer")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from({
