@@ -8,16 +8,18 @@ description: Modern multi-channel announcement engine for Paper, Spigot, and Fol
 commands:
   announcer:
     description: AdvancedAnnouncer administration command.
-    usage: /announcer
+    usage: /announcer <list|create|delete|toggle|send|preview|reload|debug|version|editor>
     aliases: [aa, advancedannouncer]
-    permission: announcer.admin
 
 permissions:
   announcer.admin:
     description: Full access to AdvancedAnnouncer administration commands.
     default: op
   announcer.editor:
-    description: Allows opening the future in-game announcement editor.
+    description: Allows opening the in-game announcement editor.
+    default: op
+  announcer.migrate:
+    description: Allows migrating legacy WelcomeDonations configuration.
     default: op
   announcer.reload:
     description: Allows reloading AdvancedAnnouncer configuration.
