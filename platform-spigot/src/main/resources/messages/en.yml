@@ -1,0 +1,8 @@
+reload-success: "<green>Configuration reloaded.</green>"
+reload-error: "<red>Configuration reload failed.</red>"
+no-permission: "<red>You do not have permission.</red>"
+migration-success: "<green>Legacy configuration migrated.</green>"
+migration-error: "<red>Legacy migration failed.</red>"
+editor-console-only: "<red>The editor can only be opened in-game.</red>"
+editor-saved: "<green>Changes saved and configuration reloaded.</green>"
+editor-cancelled: "<yellow>Editor changes discarded.</yellow>"
