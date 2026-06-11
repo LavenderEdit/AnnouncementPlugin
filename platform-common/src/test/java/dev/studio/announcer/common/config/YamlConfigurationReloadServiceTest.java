@@ -75,4 +75,41 @@ class YamlConfigurationReloadServiceTest {
         assertTrue(result.success());
         assertEquals("New One", repository.findById(AnnouncementId.of("new_one")).orElseThrow().name());
     }
+
+    @Test
+    void reloadRunsPlatformHookBeforeReadingFiles() throws Exception {
+        ConfigurationPaths paths = ConfigurationPaths.fromDataDirectory(tempDir);
+        new ConfigurationBootstrapper(paths).bootstrap();
+        YamlAnnouncementRepository repository = new YamlAnnouncementRepository(paths.announcementsDirectory());
+        int[] calls = {0};
+        YamlConfigurationReloadService service = new YamlConfigurationReloadService(
+                paths,
+                repository,
+                new ConfigurationValidationService(new MiniMessageComponentRenderer()),
+                null,
+                () -> {
+                    calls[0]++;
+                    try {
+                        Files.writeString(paths.announcementsDirectory().resolve("global.yml"), """
+                                announcements:
+                                  hooked:
+                                    name: Hooked
+                                    enabled: true
+                                    type: GLOBAL
+                                    channels:
+                                      - CHAT
+                                    messages:
+                                      - "<green>Hooked</green>"
+                                """);
+                    } catch (java.io.IOException ex) {
+                        throw new java.io.UncheckedIOException(ex);
+                    }
+                });
+
+        dev.studio.announcer.api.service.ConfigurationReloadResult result = service.reload();
+
+        assertTrue(result.success());
+        assertEquals(1, calls[0]);
+        assertTrue(repository.findById(AnnouncementId.of("hooked")).isPresent());
+    }
 }
