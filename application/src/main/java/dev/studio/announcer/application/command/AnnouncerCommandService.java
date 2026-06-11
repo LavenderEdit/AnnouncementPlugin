@@ -108,7 +108,10 @@ public final class AnnouncerCommandService {
         try {
             return switch (subcommand) {
                 case "version" -> CommandOutcome.success("AdvancedAnnouncer running on "
-                        + statusService.platformName() + " " + statusService.platformVersion() + ".");
+                        + statusService.platformName() + " " + statusService.platformVersion()
+                        + " (plugin " + statusService.pluginVersion() + ", Redis="
+                        + enabled(statusService.redisEnabled()) + ", Discord="
+                        + enabled(statusService.discordEnabled()) + ").");
                 case "debug" -> debug();
                 case "list" -> list();
                 case "create" -> create(request);
@@ -205,12 +208,18 @@ public final class AnnouncerCommandService {
 
     private CommandOutcome debug() {
         return CommandOutcome.success(List.of(
+                "PluginVersion=" + statusService.pluginVersion(),
                 "Platform=" + statusService.platformName() + " " + statusService.platformVersion(),
+                "Scheduler=" + enabled(statusService.schedulerEnabled()),
                 "Folia=" + (statusService.foliaDetected() ? "detected" : "not detected"),
                 "PlaceholderAPI=" + (statusService.placeholderApiAvailable() ? "available" : "absent"),
-                "Redis=" + (statusService.redisEnabled() ? "enabled" : "disabled"),
-                "Discord=" + (statusService.discordEnabled() ? "enabled" : "disabled"),
+                "Redis=" + enabled(statusService.redisEnabled()),
+                "Discord=" + enabled(statusService.discordEnabled()),
                 "Announcements=" + repository.findAll().size()));
+    }
+
+    private String enabled(boolean value) {
+        return value ? "enabled" : "disabled";
     }
 
     private CommandOutcome reload() {
