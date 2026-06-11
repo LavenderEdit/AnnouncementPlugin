@@ -12,6 +12,7 @@ public final class YamlConfigurationReloadService implements ConfigurationReload
     private final YamlAnnouncementRepository runtimeRepository;
     private final ConfigurationValidationService validationService;
     private final AnnouncementSchedulerService schedulerService;
+    private final Runnable beforeReload;
 
     public YamlConfigurationReloadService(
             ConfigurationPaths paths,
@@ -25,15 +26,28 @@ public final class YamlConfigurationReloadService implements ConfigurationReload
             YamlAnnouncementRepository runtimeRepository,
             ConfigurationValidationService validationService,
             AnnouncementSchedulerService schedulerService) {
+        this(paths, runtimeRepository, validationService, schedulerService, () -> {
+        });
+    }
+
+    public YamlConfigurationReloadService(
+            ConfigurationPaths paths,
+            YamlAnnouncementRepository runtimeRepository,
+            ConfigurationValidationService validationService,
+            AnnouncementSchedulerService schedulerService,
+            Runnable beforeReload) {
         this.paths = Objects.requireNonNull(paths, "paths");
         this.runtimeRepository = Objects.requireNonNull(runtimeRepository, "runtimeRepository");
         this.validationService = Objects.requireNonNull(validationService, "validationService");
         this.schedulerService = schedulerService;
+        this.beforeReload = beforeReload == null ? () -> {
+        } : beforeReload;
     }
 
     @Override
     public ConfigurationReloadResult reload() {
         try {
+            beforeReload.run();
             new ConfigurationBootstrapper(paths).bootstrap();
             YamlAnnouncementRepository candidate = new YamlAnnouncementRepository(paths.announcementsDirectory());
             ValidationResult validation = validationService.validateAnnouncements(candidate.findAll());
