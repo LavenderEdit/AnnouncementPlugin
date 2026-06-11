@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementRepository;
+import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
 import dev.studio.announcer.api.service.PlatformStatusService;
+import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
+import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
 import dev.studio.announcer.domain.announcement.Announcement;
 import dev.studio.announcer.domain.announcement.AnnouncementChannel;
 import dev.studio.announcer.domain.announcement.AnnouncementId;
@@ -68,6 +71,31 @@ class AnnouncerCommandServiceTest {
                 service.handle(CommandRequest.console("redis", "test")));
         assertEquals(CommandOutcome.success("Discord is disabled or not configured in this phase."),
                 service.handle(CommandRequest.console("discord", "test")));
+    }
+
+    @Test
+    void reloadDelegatesToReloadUseCase() {
+        AnnouncerCommandService service = new AnnouncerCommandService(
+                new FakeRepository(),
+                new FakeDispatcher(),
+                new FakeStatus(),
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded 3 announcement(s).")));
+
+        assertEquals(CommandOutcome.success("Reloaded 3 announcement(s)."),
+                service.handle(CommandRequest.console("reload")));
+    }
+
+    @Test
+    void migrateDelegatesToMigrationUseCase() {
+        AnnouncerCommandService service = new AnnouncerCommandService(
+                new FakeRepository(),
+                new FakeDispatcher(),
+                new FakeStatus(),
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
+                new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated 2 announcement(s).")));
+
+        assertEquals(CommandOutcome.success("Migrated 2 announcement(s)."),
+                service.handle(CommandRequest.console("migrate")));
     }
 
     private static AnnouncerCommandService service(FakeRepository repository, FakeDispatcher dispatcher) {
