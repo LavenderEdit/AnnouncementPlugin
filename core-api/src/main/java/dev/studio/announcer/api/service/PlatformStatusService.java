@@ -6,6 +6,14 @@ public interface PlatformStatusService {
 
     String platformVersion();
 
+    default String pluginVersion() {
+        return "unknown";
+    }
+
+    default boolean schedulerEnabled() {
+        return true;
+    }
+
     boolean foliaDetected();
 
     boolean placeholderApiAvailable();
