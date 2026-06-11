@@ -1,8 +1,9 @@
+config-version: 1
 language: en
 debug: false
 
 storage:
-  type: memory
+  type: yaml
 
 redis:
   enabled: false
@@ -25,7 +26,12 @@ update-checker:
 folia:
   compatibility-mode: auto
 
+permissions:
+  admin: announcer.admin
+  receive-default: announcer.receive.alert
+
 scheduler:
+  enabled: true
   default-interval-seconds: 300
 
 defaults:
