@@ -2,8 +2,11 @@ package dev.studio.announcer.application.command;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementRepository;
+import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
 import dev.studio.announcer.api.service.PlatformStatusService;
+import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
+import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
 import dev.studio.announcer.application.usecase.AnnouncementNotFoundException;
 import dev.studio.announcer.domain.announcement.Announcement;
 import dev.studio.announcer.domain.announcement.AnnouncementChannel;
@@ -19,14 +22,51 @@ public final class AnnouncerCommandService {
     private final AnnouncementRepository repository;
     private final AnnouncementDispatcher dispatcher;
     private final PlatformStatusService statusService;
+    private final ReloadConfigurationUseCase reloadConfigurationUseCase;
+    private final MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase;
 
     public AnnouncerCommandService(
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService) {
+        this(
+                repository,
+                dispatcher,
+                statusService,
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")),
+                new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
+                        "Legacy migration service is not configured.",
+                        List.of("No platform migration service was provided."))));
+    }
+
+    public AnnouncerCommandService(
+            AnnouncementRepository repository,
+            AnnouncementDispatcher dispatcher,
+            PlatformStatusService statusService,
+            ReloadConfigurationUseCase reloadConfigurationUseCase) {
+        this(
+                repository,
+                dispatcher,
+                statusService,
+                reloadConfigurationUseCase,
+                new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
+                        "Legacy migration service is not configured.",
+                        List.of("No platform migration service was provided."))));
+    }
+
+    public AnnouncerCommandService(
+            AnnouncementRepository repository,
+            AnnouncementDispatcher dispatcher,
+            PlatformStatusService statusService,
+            ReloadConfigurationUseCase reloadConfigurationUseCase,
+            MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.statusService = Objects.requireNonNull(statusService, "statusService");
+        this.reloadConfigurationUseCase = Objects.requireNonNull(reloadConfigurationUseCase, "reloadConfigurationUseCase");
+        this.migrateLegacyConfigurationUseCase = Objects.requireNonNull(
+                migrateLegacyConfigurationUseCase,
+                "migrateLegacyConfigurationUseCase");
     }
 
     public CommandOutcome handle(CommandRequest request) {
@@ -45,7 +85,8 @@ public final class AnnouncerCommandService {
                 case "toggle" -> toggle(request);
                 case "send" -> send(request);
                 case "preview" -> preview(request);
-                case "reload" -> CommandOutcome.success("Reload completed for in-memory Phase 2 services.");
+                case "reload" -> reload();
+                case "migrate" -> migrate();
                 case "redis" -> diagnostic(request, "redis", "Redis is disabled or not configured in this phase.");
                 case "discord" -> diagnostic(request, "discord", "Discord is disabled or not configured in this phase.");
                 default -> help();
@@ -57,7 +98,7 @@ public final class AnnouncerCommandService {
 
     public List<String> suggestions(String prefix) {
         String lower = prefix == null ? "" : prefix.toLowerCase(Locale.ROOT);
-        return List.of("debug", "delete", "discord", "create", "list", "preview", "redis", "reload", "send", "toggle", "version")
+        return List.of("debug", "delete", "discord", "editor", "create", "list", "migrate", "preview", "redis", "reload", "send", "toggle", "version")
                 .stream()
                 .filter(value -> value.startsWith(lower))
                 .toList();
@@ -141,6 +182,28 @@ public final class AnnouncerCommandService {
                 "Announcements=" + repository.findAll().size()));
     }
 
+    private CommandOutcome reload() {
+        ConfigurationReloadResult result = reloadConfigurationUseCase.reload();
+        if (result.success()) {
+            return CommandOutcome.success(result.message());
+        }
+        java.util.List<String> messages = new java.util.ArrayList<>();
+        messages.add(result.message());
+        messages.addAll(result.errors());
+        return CommandOutcome.error(messages);
+    }
+
+    private CommandOutcome migrate() {
+        ConfigurationReloadResult result = migrateLegacyConfigurationUseCase.migrate();
+        if (result.success()) {
+            return CommandOutcome.success(result.message());
+        }
+        java.util.List<String> messages = new java.util.ArrayList<>();
+        messages.add(result.message());
+        messages.addAll(result.errors());
+        return CommandOutcome.error(messages);
+    }
+
     private CommandOutcome diagnostic(CommandRequest request, String name, String disabledMessage) {
         if (request.arguments().size() >= 2 && "test".equalsIgnoreCase(request.argument(1))) {
             return CommandOutcome.success(disabledMessage);
@@ -157,7 +220,9 @@ public final class AnnouncerCommandService {
                 "/announcer toggle <id>",
                 "/announcer send <id>",
                 "/announcer preview <id>",
+                "/announcer editor",
                 "/announcer reload",
+                "/announcer migrate",
                 "/announcer debug",
                 "/announcer version"));
     }
