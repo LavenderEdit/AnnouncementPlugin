@@ -65,6 +65,8 @@ class AnnouncerCommandServiceTest {
         assertEquals(CommandStatus.SUCCESS, outcome.status());
         assertTrue(outcome.messages().stream().anyMatch(line -> line.contains("Redis=disabled")));
         assertTrue(outcome.messages().stream().anyMatch(line -> line.contains("Discord=disabled")));
+        assertTrue(outcome.messages().stream().anyMatch(line -> line.contains("Scheduler=enabled")));
+        assertTrue(outcome.messages().stream().anyMatch(line -> line.contains("PluginVersion=0.1.0-test")));
     }
 
     @Test
@@ -181,6 +183,16 @@ class AnnouncerCommandServiceTest {
         @Override
         public String platformVersion() {
             return "1.21.1";
+        }
+
+        @Override
+        public String pluginVersion() {
+            return "0.1.0-test";
+        }
+
+        @Override
+        public boolean schedulerEnabled() {
+            return true;
         }
 
         @Override
