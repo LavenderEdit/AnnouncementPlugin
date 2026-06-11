@@ -20,4 +20,8 @@ public record CommandOutcome(CommandStatus status, List<String> messages) {
     public static CommandOutcome error(String message) {
         return new CommandOutcome(CommandStatus.ERROR, List.of(message));
     }
+
+    public static CommandOutcome error(List<String> messages) {
+        return new CommandOutcome(CommandStatus.ERROR, messages);
+    }
 }
