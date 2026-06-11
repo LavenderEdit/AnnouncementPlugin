@@ -1,0 +1,27 @@
+title: "<gold>AdvancedAnnouncer</gold>"
+size: 27
+items:
+  announcements:
+    slot: 10
+    material: BOOK
+    name: "<gold>Anuncios</gold>"
+  scheduler:
+    slot: 11
+    material: CLOCK
+    name: "<yellow>Programador</yellow>"
+  events:
+    slot: 13
+    material: BELL
+    name: "<aqua>Eventos</aqua>"
+  styles:
+    slot: 15
+    material: BRUSH
+    name: "<light_purple>Estilos</light_purple>"
+  save:
+    slot: 22
+    material: EMERALD
+    name: "<green>Guardar</green>"
+  cancel:
+    slot: 26
+    material: BARRIER
+    name: "<red>Cancelar</red>"
