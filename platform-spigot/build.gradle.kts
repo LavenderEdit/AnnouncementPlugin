@@ -10,6 +10,10 @@ dependencies {
     implementation("net.kyori:adventure-platform-bukkit:4.3.4")
     implementation("net.kyori:adventure-text-minimessage:4.17.0")
     implementation("net.kyori:adventure-text-serializer-gson:4.17.0")
+    compileOnly("xyz.xenondevs.invui:invui:1.49")
+    compileOnly("io.github.rysefoxx.anvilgui:anvilgui:1.6.5.4")
+
+    testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
 }
 
 tasks.processResources {
