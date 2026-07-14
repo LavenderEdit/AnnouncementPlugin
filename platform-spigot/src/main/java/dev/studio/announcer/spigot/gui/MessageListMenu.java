@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public final class MessageListMenu {
     private static final int PAGE_SIZE = 45;
@@ -17,34 +18,42 @@ public final class MessageListMenu {
         Announcement announcement = session.draft(id)
                 .orElseThrow(() -> new IllegalArgumentException("Draft announcement not found: " + id.value()));
         EditorMenuHolder holder = new EditorMenuHolder(session, EditorMenuType.MESSAGE_LIST, id, safePage);
-        Inventory inventory = Bukkit.createInventory(holder, 54, "Mensajes - " + id.value());
-        holder.attach(inventory);
 
         List<String> messages = announcement.messages();
+        int totalPages = Math.max(1, (int) Math.ceil((double) messages.size() / PAGE_SIZE));
+        String title = "Mensajes - " + id.value() + "  [" + (safePage + 1) + "/" + totalPages + "]";
+        Inventory inventory = Bukkit.createInventory(holder, 54, title);
+        holder.attach(inventory);
+
+        ItemStack[] contents = inventory.getContents();
+        MenuItems.fillBorder(contents, Material.GRAY_STAINED_GLASS_PANE);
+
         int start = safePage * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, messages.size());
         for (int index = start; index < end; index++) {
             int slot = index - start;
             holder.mapAnnouncement(slot, AnnouncementId.of(id.value() + ":msg:" + index));
-            inventory.setItem(slot, messageItem(index, messages.get(index), messages.size()));
+            contents[slot] = messageItem(index, messages.get(index), messages.size());
         }
 
         if (safePage > 0) {
-            inventory.setItem(45, MenuItems.item(Material.ARROW, "Anterior"));
+            contents[45] = MenuItems.item(Material.ARROW, "Anterior");
         }
-        inventory.setItem(47, MenuItems.item(Material.EMERALD, "Agregar mensaje",
+        contents[47] = MenuItems.glowing(Material.EMERALD, "Agregar mensaje",
                 List.of("Anade un mensaje por defecto.",
-                        "Edita el YAML para personalizarlo.")));
-        inventory.setItem(49, MenuItems.item(Material.OAK_SIGN, "Volver"));
+                        "Edita el YAML para personalizarlo."));
+        contents[49] = MenuItems.item(Material.OAK_SIGN, "Volver");
         if (end < messages.size()) {
-            inventory.setItem(53, MenuItems.item(Material.ARROW, "Siguiente"));
+            contents[53] = MenuItems.item(Material.ARROW, "Siguiente");
         }
 
         if (messages.isEmpty()) {
-            inventory.setItem(22, MenuItems.item(Material.BARRIER, "Sin mensajes",
-                    List.of("Usa el boton de abajo para agregar uno.")));
+            contents[22] = MenuItems.item(Material.BARRIER, "Sin mensajes",
+                    List.of("Usa el boton de abajo para agregar uno."));
         }
 
+        MenuItems.fillNavigationRow(contents, PAGE_SIZE);
+        inventory.setContents(contents);
         player.openInventory(inventory);
     }
 

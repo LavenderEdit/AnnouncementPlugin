@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public final class StylesMenu {
     private static final int PAGE_SIZE = 45;
@@ -16,10 +17,15 @@ public final class StylesMenu {
     public void open(Player player, EditorSession session, int page) {
         int safePage = Math.max(0, page);
         EditorMenuHolder holder = new EditorMenuHolder(session, EditorMenuType.STYLES, null, safePage);
-        Inventory inventory = Bukkit.createInventory(holder, 54, "AdvancedAnnouncer - Estilos");
-        holder.attach(inventory);
 
         List<Announcement> announcements = session.drafts();
+        int totalPages = Math.max(1, (int) Math.ceil((double) announcements.size() / PAGE_SIZE));
+        String title = "Estilos  [" + (safePage + 1) + "/" + totalPages + "]";
+        Inventory inventory = Bukkit.createInventory(holder, 54, title);
+        holder.attach(inventory);
+
+        ItemStack[] contents = inventory.getContents();
+        MenuItems.fillBorder(contents, Material.GRAY_STAINED_GLASS_PANE);
 
         int start = safePage * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, announcements.size());
@@ -27,23 +33,25 @@ public final class StylesMenu {
             Announcement announcement = announcements.get(index);
             int slot = index - start;
             holder.mapAnnouncement(slot, announcement.id());
-            inventory.setItem(slot, styleItem(announcement));
+            contents[slot] = styleItem(announcement);
         }
 
         if (safePage > 0) {
-            inventory.setItem(45, MenuItems.item(Material.ARROW, "Anterior"));
+            contents[45] = MenuItems.item(Material.ARROW, "Anterior");
         }
-        inventory.setItem(49, MenuItems.item(Material.OAK_SIGN, "Volver"));
+        contents[49] = MenuItems.item(Material.OAK_SIGN, "Volver");
         if (end < announcements.size()) {
-            inventory.setItem(53, MenuItems.item(Material.ARROW, "Siguiente"));
+            contents[53] = MenuItems.item(Material.ARROW, "Siguiente");
         }
 
         if (announcements.isEmpty()) {
-            inventory.setItem(22, MenuItems.item(Material.BARRIER, "Sin anuncios",
+            contents[22] = MenuItems.item(Material.BARRIER, "Sin anuncios",
                     List.of("Crea un anuncio desde",
-                            "el menu de Anuncios.")));
+                            "el menu de Anuncios."));
         }
 
+        MenuItems.fillNavigationRow(contents, PAGE_SIZE);
+        inventory.setContents(contents);
         player.openInventory(inventory);
     }
 

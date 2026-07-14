@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public final class SchedulerMenu {
     private static final int PAGE_SIZE = 45;
@@ -15,12 +16,17 @@ public final class SchedulerMenu {
     public void open(Player player, EditorSession session, int page) {
         int safePage = Math.max(0, page);
         EditorMenuHolder holder = new EditorMenuHolder(session, EditorMenuType.SCHEDULER, null, safePage);
-        Inventory inventory = Bukkit.createInventory(holder, 54, "AdvancedAnnouncer - Programador");
-        holder.attach(inventory);
 
         List<Announcement> scheduled = session.drafts().stream()
                 .filter(a -> a.interval().isPresent() || a.cronExpression().isPresent())
                 .toList();
+        int totalPages = Math.max(1, (int) Math.ceil((double) scheduled.size() / PAGE_SIZE));
+        String title = "Programador  [" + (safePage + 1) + "/" + totalPages + "]";
+        Inventory inventory = Bukkit.createInventory(holder, 54, title);
+        holder.attach(inventory);
+
+        ItemStack[] contents = inventory.getContents();
+        MenuItems.fillBorder(contents, Material.GRAY_STAINED_GLASS_PANE);
 
         int start = safePage * PAGE_SIZE;
         int end = Math.min(start + PAGE_SIZE, scheduled.size());
@@ -28,23 +34,25 @@ public final class SchedulerMenu {
             Announcement announcement = scheduled.get(index);
             int slot = index - start;
             holder.mapAnnouncement(slot, announcement.id());
-            inventory.setItem(slot, scheduleItem(announcement));
+            contents[slot] = scheduleItem(announcement);
         }
 
         if (safePage > 0) {
-            inventory.setItem(45, MenuItems.item(Material.ARROW, "Anterior"));
+            contents[45] = MenuItems.item(Material.ARROW, "Anterior");
         }
-        inventory.setItem(49, MenuItems.item(Material.OAK_SIGN, "Volver"));
+        contents[49] = MenuItems.item(Material.OAK_SIGN, "Volver");
         if (end < scheduled.size()) {
-            inventory.setItem(53, MenuItems.item(Material.ARROW, "Siguiente"));
+            contents[53] = MenuItems.item(Material.ARROW, "Siguiente");
         }
 
         if (scheduled.isEmpty()) {
-            inventory.setItem(22, MenuItems.item(Material.BARRIER, "Sin anuncios programados",
+            contents[22] = MenuItems.item(Material.BARRIER, "Sin anuncios programados",
                     List.of("Crea un anuncio con intervalo o cron",
-                            "desde el menu de Anuncios.")));
+                            "desde el menu de Anuncios."));
         }
 
+        MenuItems.fillNavigationRow(contents, PAGE_SIZE);
+        inventory.setContents(contents);
         player.openInventory(inventory);
     }
 
