@@ -54,6 +54,57 @@ public final class EditorSession {
         drafts.put(id, announcement);
     }
 
+    public void updateMessages(AnnouncementId id, List<String> messages) {
+        ensureOpen();
+        Announcement current = requireDraft(id);
+        Instant now = Instant.now();
+        Announcement updated = new Announcement(
+                current.id(),
+                current.name(),
+                current.enabled(),
+                current.type(),
+                current.channels(),
+                messages,
+                current.permission(),
+                current.targetServers(),
+                current.targetGroups(),
+                current.interval(),
+                current.cronExpression(),
+                current.priority(),
+                current.soundOptions(),
+                current.toastOptions(),
+                current.bossBarOptions(),
+                current.actionBarOptions(),
+                current.titleOptions(),
+                current.conditions(),
+                current.metadata(),
+                current.createdAt(),
+                now);
+        drafts.put(id, updated);
+    }
+
+    public void addMessage(AnnouncementId id, String message) {
+        ensureOpen();
+        Announcement current = requireDraft(id);
+        List<String> updated = new java.util.ArrayList<>(current.messages());
+        updated.add(message);
+        updateMessages(id, updated);
+    }
+
+    public void removeMessage(AnnouncementId id, int index) {
+        ensureOpen();
+        Announcement current = requireDraft(id);
+        List<String> updated = new java.util.ArrayList<>(current.messages());
+        if (index < 0 || index >= updated.size()) {
+            throw new IndexOutOfBoundsException("Message index out of range: " + index);
+        }
+        updated.remove(index);
+        if (updated.isEmpty()) {
+            updated.add("<gray>Sin mensajes</gray>");
+        }
+        updateMessages(id, updated);
+    }
+
     public Optional<Announcement> draft(AnnouncementId id) {
         ensureOpen();
         return Optional.ofNullable(drafts.get(id));

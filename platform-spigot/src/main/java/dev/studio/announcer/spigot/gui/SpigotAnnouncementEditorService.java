@@ -36,6 +36,10 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
     private final AnnouncementListMenu listMenu = new AnnouncementListMenu();
     private final AnnouncementDetailMenu detailMenu = new AnnouncementDetailMenu();
     private final ConfirmDeleteMenu confirmDeleteMenu = new ConfirmDeleteMenu();
+    private final SchedulerMenu schedulerMenu = new SchedulerMenu();
+    private final EventsMenu eventsMenu = new EventsMenu();
+    private final StylesMenu stylesMenu = new StylesMenu();
+    private final MessageListMenu messageListMenu = new MessageListMenu();
     private final Map<UUID, EditorSession> sessions = new ConcurrentHashMap<>();
 
     public SpigotAnnouncementEditorService(
@@ -91,6 +95,10 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             case LIST -> handleList(player, holder, slot);
             case DETAIL -> handleDetail(player, holder, slot);
             case CONFIRM_DELETE -> handleConfirmDelete(player, holder, slot);
+            case SCHEDULER -> handleScheduler(player, holder, slot);
+            case EVENTS -> handleEvents(player, holder, slot);
+            case STYLES -> handleStyles(player, holder, slot);
+            case MESSAGE_LIST -> handleMessageList(player, holder, slot);
         }
     }
 
@@ -120,6 +128,18 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
     private void handleMain(Player player, EditorMenuHolder holder, int slot) {
         if (slot == 10) {
             next(player, () -> listMenu.open(player, holder.session(), 0));
+            return;
+        }
+        if (slot == 11) {
+            next(player, () -> schedulerMenu.open(player, holder.session(), 0));
+            return;
+        }
+        if (slot == 13) {
+            next(player, () -> eventsMenu.open(player, holder.session(), 0));
+            return;
+        }
+        if (slot == 15) {
+            next(player, () -> stylesMenu.open(player, holder.session(), 0));
             return;
         }
         if (slot == 22) {
@@ -155,6 +175,8 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             next(player, () -> detailMenu.open(player, holder.session(), id));
         } else if (slot == 12) {
             preview(player, holder, id);
+        } else if (slot == 13) {
+            next(player, () -> messageListMenu.open(player, holder.session(), id, 0));
         } else if (slot == 14) {
             AnnouncementId copyId = nextCopyId(holder.session(), id);
             holder.session().duplicate(id, copyId);
@@ -177,6 +199,72 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         } else if (slot == 15) {
             next(player, () -> detailMenu.open(player, holder.session(), id));
         }
+    }
+
+    private void handleScheduler(Player player, EditorMenuHolder holder, int slot) {
+        holder.announcementAt(slot).ifPresent(id -> next(player, () -> detailMenu.open(player, holder.session(), id)));
+        if (slot == 45 && holder.page() > 0) {
+            next(player, () -> schedulerMenu.open(player, holder.session(), holder.page() - 1));
+        } else if (slot == 49) {
+            next(player, () -> mainMenu.open(player, holder.session()));
+        } else if (slot == 53) {
+            next(player, () -> schedulerMenu.open(player, holder.session(), holder.page() + 1));
+        }
+    }
+
+    private void handleEvents(Player player, EditorMenuHolder holder, int slot) {
+        holder.announcementAt(slot).ifPresent(id -> next(player, () -> detailMenu.open(player, holder.session(), id)));
+        if (slot == 45 && holder.page() > 0) {
+            next(player, () -> eventsMenu.open(player, holder.session(), holder.page() - 1));
+        } else if (slot == 49) {
+            next(player, () -> mainMenu.open(player, holder.session()));
+        } else if (slot == 53) {
+            next(player, () -> eventsMenu.open(player, holder.session(), holder.page() + 1));
+        }
+    }
+
+    private void handleStyles(Player player, EditorMenuHolder holder, int slot) {
+        holder.announcementAt(slot).ifPresent(id -> next(player, () -> detailMenu.open(player, holder.session(), id)));
+        if (slot == 45 && holder.page() > 0) {
+            next(player, () -> stylesMenu.open(player, holder.session(), holder.page() - 1));
+        } else if (slot == 49) {
+            next(player, () -> mainMenu.open(player, holder.session()));
+        } else if (slot == 53) {
+            next(player, () -> stylesMenu.open(player, holder.session(), holder.page() + 1));
+        }
+    }
+
+    private void handleMessageList(Player player, EditorMenuHolder holder, int slot) {
+        AnnouncementId id = holder.announcementId()
+                .orElseThrow(() -> new IllegalStateException("Message list menu missing announcement id."));
+        if (slot == 49) {
+            next(player, () -> detailMenu.open(player, holder.session(), id));
+            return;
+        }
+        if (slot == 47) {
+            holder.session().addMessage(id, "<gray>Nuevo mensaje</gray>");
+            player.sendMessage("Mensaje agregado.");
+            next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page()));
+            return;
+        }
+        if (slot == 45 && holder.page() > 0) {
+            next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page() - 1));
+            return;
+        }
+        if (slot == 53) {
+            next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page() + 1));
+            return;
+        }
+        holder.announcementAt(slot).ifPresent(msgId -> {
+            String value = msgId.value();
+            int colonIndex = value.lastIndexOf(":msg:");
+            if (colonIndex >= 0) {
+                int msgIndex = Integer.parseInt(value.substring(colonIndex + 5));
+                holder.session().removeMessage(id, msgIndex);
+                player.sendMessage("Mensaje #" + (msgIndex + 1) + " eliminado.");
+                next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page()));
+            }
+        });
     }
 
     private void save(Player player, EditorSession session) {
