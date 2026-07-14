@@ -200,7 +200,13 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);
         }
-        getLogger().info("AdvancedAnnouncer enabled.");
+
+        int announcementCount = announcementRepository.findAll().size();
+        boolean redisEnabled = getConfig().getBoolean("redis.enabled", false);
+        boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
+        boolean foliaReady = scheduler instanceof dev.studio.announcer.spigot.scheduler.BukkitFoliaScheduler;
+        StartupBanner.printEnable(getLogger(), getDescription().getVersion(),
+                announcementCount, redisEnabled, discordEnabled, foliaReady);
     }
 
     @Override
@@ -240,7 +246,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
             audiences.close();
             audiences = null;
         }
-        getLogger().info("AdvancedAnnouncer disabled.");
+        StartupBanner.printDisable(getLogger(), getDescription().getVersion());
     }
 
     private void registerCommands() {
