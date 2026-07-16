@@ -19,6 +19,10 @@ public record CommandRequest(String senderId, boolean player, List<String> argum
     }
 
     public String argument(int index) {
+        if (index < 0 || index >= arguments.size()) {
+            throw new IndexOutOfBoundsException(
+                    "Argument index " + index + " out of range (size=" + arguments.size() + ")");
+        }
         return arguments.get(index);
     }
 }

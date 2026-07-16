@@ -26,8 +26,8 @@ public final class InternalPlaceholderResolver implements PlaceholderResolver {
             return "";
         }
         PlaceholderContext safeContext = context == null ? PlaceholderContext.empty() : context;
-        String resolved = input.replace("%newline%", System.lineSeparator())
-                               .replace("{newline}", System.lineSeparator());
+        String resolved = input.replace("%newline%", "\n")
+                               .replace("{newline}", "\n");
         
         String timeStr = LocalTime.now(clock).format(DateTimeFormatter.ISO_LOCAL_TIME);
         String dateStr = LocalDate.now(clock).format(DateTimeFormatter.ISO_LOCAL_DATE);

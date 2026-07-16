@@ -4,10 +4,16 @@ import dev.studio.announcer.api.message.MessageRenderer;
 import dev.studio.announcer.api.placeholder.PlaceholderContext;
 import dev.studio.announcer.api.placeholder.PlaceholderResolver;
 import dev.studio.announcer.domain.validation.ValidationResult;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 
 public final class MiniMessageComponentRenderer implements MessageRenderer<Component> {
+    private static final int CHAT_WIDTH = 150;
+    private static final Pattern CENTER_PATTERN = Pattern.compile(
+            "<center>(.*?)</center>", Pattern.DOTALL);
     private final MiniMessage miniMessage;
     private final PlaceholderResolver placeholderResolver;
 
@@ -29,7 +35,8 @@ public final class MiniMessageComponentRenderer implements MessageRenderer<Compo
             return clickValidation;
         }
         try {
-            miniMessage.deserialize(input == null ? "" : input);
+            String preprocessed = preprocessCenter(input == null ? "" : input);
+            miniMessage.deserialize(preprocessed);
             return ValidationResult.ok();
         } catch (RuntimeException ex) {
             return ValidationResult.invalid(ex.getMessage());
@@ -43,12 +50,36 @@ public final class MiniMessageComponentRenderer implements MessageRenderer<Compo
         if (!result.valid()) {
             throw new IllegalArgumentException(String.join("; ", result.errors()));
         }
-        return miniMessage.deserialize(resolved);
+        String preprocessed = preprocessCenter(resolved);
+        return miniMessage.deserialize(preprocessed);
+    }
+
+    private String preprocessCenter(String input) {
+        if (input == null || !input.contains("<center>")) {
+            return input;
+        }
+        Matcher matcher = CENTER_PATTERN.matcher(input);
+        StringBuffer sb = new StringBuffer();
+        while (matcher.find()) {
+            String content = matcher.group(1);
+            String plain = content.replaceAll("<[^>]+>", "");
+            int contentLength = plain.length();
+            int padding = Math.max(0, (CHAT_WIDTH - contentLength) / 2);
+            String pad = " ".repeat(padding);
+            String replacement = pad + content;
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     private ValidationResult validateClickCommand(String input) {
-        String value = input == null ? "" : input.toLowerCase();
-        if (value.contains("<click:run_command>") || value.contains("<click:suggest_command>")) {
+        if (input == null) {
+            return ValidationResult.ok();
+        }
+        String lower = input.toLowerCase(Locale.ROOT);
+        if ((lower.contains("<click:run_command>") && !lower.contains("<click:run_command:"))
+                || (lower.contains("<click:suggest_command>") && !lower.contains("<click:suggest_command:"))) {
             return ValidationResult.invalid("Click command tags require a command value.");
         }
         return ValidationResult.ok();

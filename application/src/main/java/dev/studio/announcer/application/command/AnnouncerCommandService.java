@@ -11,6 +11,7 @@ import dev.studio.announcer.api.service.PlatformStatusService;
 import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
 import dev.studio.announcer.application.usecase.AnnouncementNotFoundException;
+import dev.studio.announcer.application.usecase.AnnouncementValidationException;
 import dev.studio.announcer.domain.announcement.Announcement;
 import dev.studio.announcer.domain.announcement.AnnouncementChannel;
 import dev.studio.announcer.domain.announcement.AnnouncementId;
@@ -123,9 +124,11 @@ public final class AnnouncerCommandService {
                 case "migrate" -> migrate();
                 case "redis" -> redisDiagnostic(request);
                 case "discord" -> discordDiagnostic(request);
+                case "editor" -> CommandOutcome.success("Opening editor...");
                 default -> help();
             };
-        } catch (IllegalArgumentException | AnnouncementNotFoundException ex) {
+        } catch (IllegalArgumentException | AnnouncementNotFoundException
+                 | AnnouncementValidationException | IllegalStateException ex) {
             return CommandOutcome.error(ex.getMessage());
         }
     }
@@ -136,6 +139,15 @@ public final class AnnouncerCommandService {
                 .stream()
                 .filter(value -> value.startsWith(lower))
                 .toList();
+    }
+
+    public List<String> announcementNames(String subcommand) {
+        return switch (subcommand.toLowerCase(Locale.ROOT)) {
+            case "send", "toggle", "preview", "delete" -> repository.findAll().stream()
+                    .map(a -> a.id().value())
+                    .toList();
+            default -> List.of();
+        };
     }
 
     private CommandOutcome create(CommandRequest request) {
