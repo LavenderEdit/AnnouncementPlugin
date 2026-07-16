@@ -67,7 +67,8 @@ public final class MessageListMenu {
         lore.add("");
         lore.add("Contenido: " + preview);
         lore.add("");
-        lore.add("Click izquierdo: eliminar");
+        lore.add("Click izquierdo: editar");
+        lore.add("Click derecho: eliminar");
         return MenuItems.item(Material.PAPER, "Mensaje #" + (index + 1), lore);
     }
 

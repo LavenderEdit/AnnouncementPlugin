@@ -177,13 +177,14 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new ConfigBackupService(configurationPaths.backupsDirectory()),
                 reloadService,
                 new LegacyWelcomeDonationsMigrator()));
+        AnvilTextInputService anvilInputService = new AnvilTextInputService(renderer);
         announcementEditorService = new SpigotAnnouncementEditorService(
                 this,
                 announcementRepository,
                 announcementDispatcher,
                 scheduler,
                 reloadConfigurationUseCase,
-                new AnvilTextInputService(renderer));
+                anvilInputService);
         announcerCommandService = new AnnouncerCommandService(
                 announcementRepository,
                 announcementDispatcher,
@@ -197,6 +198,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new NotificationCleanupListener(actionBarService, bossBarService),
                 this);
+        getServer().getPluginManager().registerEvents(anvilInputService, this);
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);
         }

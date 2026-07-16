@@ -90,6 +90,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         if (slot < 0 || slot >= top.getSize()) {
             return;
         }
+        boolean isRightClick = event.isRightClick();
         switch (holder.type()) {
             case MAIN -> handleMain(player, holder, slot);
             case LIST -> handleList(player, holder, slot);
@@ -98,7 +99,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             case SCHEDULER -> handleScheduler(player, holder, slot);
             case EVENTS -> handleEvents(player, holder, slot);
             case STYLES -> handleStyles(player, holder, slot);
-            case MESSAGE_LIST -> handleMessageList(player, holder, slot);
+            case MESSAGE_LIST -> handleMessageList(player, holder, slot, isRightClick);
         }
     }
 
@@ -173,6 +174,12 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         if (slot == 10) {
             holder.session().toggle(id);
             next(player, () -> detailMenu.open(player, holder.session(), id));
+        } else if (slot == 11) {
+            inputService.openRenameAnvil(player, id, newName -> {
+                holder.session().rename(id, newName);
+                player.sendMessage("Nombre actualizado: " + newName);
+                next(player, () -> detailMenu.open(player, holder.session(), id));
+            });
         } else if (slot == 12) {
             preview(player, holder, id);
         } else if (slot == 13) {
@@ -182,6 +189,8 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             holder.session().duplicate(id, copyId);
             player.sendMessage("Draft duplicado: " + copyId.value());
             next(player, () -> detailMenu.open(player, holder.session(), copyId));
+        } else if (slot == 15) {
+            sendAnnouncement(player, holder, id);
         } else if (slot == 16) {
             next(player, () -> confirmDeleteMenu.open(player, holder.session(), id));
         } else if (slot == 22) {
@@ -234,7 +243,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         }
     }
 
-    private void handleMessageList(Player player, EditorMenuHolder holder, int slot) {
+    private void handleMessageList(Player player, EditorMenuHolder holder, int slot, boolean isRightClick) {
         AnnouncementId id = holder.announcementId()
                 .orElseThrow(() -> new IllegalStateException("Message list menu missing announcement id."));
         if (slot == 49) {
@@ -259,10 +268,27 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             String value = msgId.value();
             int colonIndex = value.lastIndexOf(":msg:");
             if (colonIndex >= 0) {
-                int msgIndex = Integer.parseInt(value.substring(colonIndex + 5));
-                holder.session().removeMessage(id, msgIndex);
-                player.sendMessage("Mensaje #" + (msgIndex + 1) + " eliminado.");
-                next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page()));
+                try {
+                    int msgIndex = Integer.parseInt(value.substring(colonIndex + 5));
+                    Announcement announcement = holder.session().draft(id)
+                            .orElseThrow(() -> new IllegalArgumentException("Draft not found: " + id.value()));
+                    if (msgIndex >= 0 && msgIndex < announcement.messages().size()) {
+                        if (isRightClick) {
+                            holder.session().removeMessage(id, msgIndex);
+                            player.sendMessage("Mensaje #" + (msgIndex + 1) + " eliminado.");
+                            next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page()));
+                        } else {
+                            String currentMessage = announcement.messages().get(msgIndex);
+                            inputService.openMessageEditAnvil(player, id, msgIndex, currentMessage, newMessage -> {
+                                holder.session().updateMessage(id, msgIndex, newMessage);
+                                player.sendMessage("Mensaje #" + (msgIndex + 1) + " actualizado.");
+                                next(player, () -> messageListMenu.open(player, holder.session(), id, holder.page()));
+                            });
+                        }
+                    }
+                } catch (NumberFormatException ex) {
+                    player.sendMessage("Error al parsear indice de mensaje.");
+                }
             }
         });
     }
@@ -292,6 +318,13 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
                 .orElseThrow(() -> new IllegalArgumentException("Draft announcement not found: " + id.value()));
         DeliverySummary summary = dispatcher.preview(announcement, player.getUniqueId().toString());
         player.sendMessage("Preview enviado a " + summary.delivered() + " audiencia(s).");
+    }
+
+    private void sendAnnouncement(Player player, EditorMenuHolder holder, AnnouncementId id) {
+        Announcement announcement = holder.session().draft(id)
+                .orElseThrow(() -> new IllegalArgumentException("Draft announcement not found: " + id.value()));
+        DeliverySummary summary = dispatcher.broadcast(announcement);
+        player.sendMessage("Anuncio enviado a " + summary.delivered() + " audiencia(s).");
     }
 
     private Announcement defaultAnnouncement() {

@@ -33,11 +33,17 @@ public final class AnnouncementDetailMenu {
         if (announcement.cronExpression().isPresent()) {
             infoLore.add("Cron: " + announcement.cronExpression().get());
         }
+        if (announcement.permission().isPresent()) {
+            infoLore.add("Permiso: " + announcement.permission().get());
+        }
+        infoLore.add("Prioridad: " + announcement.priority());
         contents[4] = MenuItems.item(Material.PAPER, announcement.name(), infoLore);
         contents[10] = MenuItems.item(
                 announcement.enabled() ? Material.LIME_DYE : Material.GRAY_DYE,
                 announcement.enabled() ? "Pausar" : "Activar",
                 List.of("Cambia el estado del draft."));
+        contents[11] = MenuItems.item(Material.NAME_TAG, "Renombrar",
+                List.of("Cambia el nombre del anuncio."));
         contents[12] = MenuItems.item(Material.ENDER_EYE, "Previsualizar",
                 List.of("Envia este anuncio solo para ti."));
         contents[13] = MenuItems.item(Material.WRITABLE_BOOK, "Mensajes",
@@ -45,6 +51,8 @@ public final class AnnouncementDetailMenu {
                         "Total: " + announcement.messages().size() + " linea(s)"));
         contents[14] = MenuItems.item(Material.NAME_TAG, "Duplicar",
                 List.of("Crea una copia con sufijo _copy."));
+        contents[15] = MenuItems.item(Material.REDSTONE, "Enviar",
+                List.of("Envia este anuncio a todos los jugadores."));
         contents[16] = MenuItems.item(Material.REDSTONE_BLOCK, "Eliminar",
                 List.of("Requiere confirmacion."));
         contents[22] = MenuItems.item(Material.OAK_SIGN, "Volver");
