@@ -47,6 +47,14 @@ public final class AnnouncerCommand implements CommandExecutor, TabCompleter {
             List<String> suggestions = suggestionsFor(sender, args[0]);
             return suggestions.stream().distinct().sorted().toList();
         }
+        if (args.length == 2) {
+            String subcommand = args[0].toLowerCase(java.util.Locale.ROOT);
+            String partial = args[1].toLowerCase(java.util.Locale.ROOT);
+            return commandService.announcementNames(subcommand).stream()
+                    .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(partial))
+                    .sorted()
+                    .toList();
+        }
         return List.of();
     }
 
