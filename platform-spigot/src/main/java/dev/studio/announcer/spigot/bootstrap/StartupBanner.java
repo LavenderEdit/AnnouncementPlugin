@@ -7,14 +7,47 @@ public final class StartupBanner {
     private StartupBanner() {
     }
 
-    private static final String[] STUDIOS_ART = {
-            " _____ _  _  ___  _    ___  ____  ___  . ____  ___  ",
-            "/ ____| || || __|| |  / __||  _ \\| __|.|  _ \\| __| ",
-            "\\___  \\  // || _| |__\\__ \\|  _/| _|..|  _/| _|    ",
-            " ____/ \\_// |___|____|___/|_|  |___|.|_|  |___|    "
+    private static final String[] LOGO_ART = {
+            " ███  ████  █   █      ███  █   █ █   █  ███  █   █ █   █  ███  █████ ████    ",
+            "█ ░░█ █░░░█ █░  █░    █ ░░█ ██  █░██  █░█ ░░█ █░  █░██  █░█ ░░░ █░░░░░█░░░█  ",
+            "█████░█░░░█░█░░ █░░   █████░█░█ █░█░█ █░█░ ░█░█░░ █░█░█ █░█░ ░░░████░░████░░  ",
+            "█░░░█░█░░ █░░█░█ ░░█  █░░░█░█░░██░█░░██░█░░ █░█░░ █░█░░██░█░░   █░░░░ █░░█░ ░ ",
+            "█░░░█░████ ░░ █ ░ ░█░ █░░░█░█░░ █░█░░ █░░███ ░░███ ░█░░ █░░███  █████░█░░░█░  ",
+            " ░░  ░░░░░░ ░  ░ ░  ░░ ░░  ░░░░  ░░░░  ░░ ░░░ ░ ░░░ ░░░  ░░ ░░░  ░░░░░ ░░  ░  ",
+            "  ░   ░ ░░░░    ░    ░  ░   ░ ░   ░ ░   ░  ░░░   ░░░  ░   ░  ░░░  ░░░░░ ░   ░  "
     };
 
-    private static final int BOX_WIDTH = 60;
+    private static final String[] STUDIOS_TKOH_ART = {
+            "*******************************************************####################################%%%%%%%%%%%%%%%%%%%%%%%%%%",
+            "*********************************************************##################################%%%%%%%%%%%%%%%%%%%%%%%%%%",
+            "**********************************************************################################%%%%%%%%%%%%%%%%%%%%%%%%%%%",
+            "***********************************************************###################################%%%%%%%%%%%%%%%%%%%%%%%",
+            "***********************************************************########################################%%%%%%%%%%%%%%%%%%",
+            "###****-            +*++************************************############################################%%%%%%%%%%%%%",
+            "###***+.             .............-************:.-****++==++++*#**#####+*##*+++#######*######::=%######*::+#%%%%%%%%",
+            "####**+.                             :+*****= -+*+. +**** -*###+.-##### -##= ##*=: +##+ ###=.-##*-.*##=.=##+ :#%%%%%%",
+            "#####*+.  :**********++++++++++++++.  -*****- =********** -***#+.:##### -##= #####=.+#+ ##: ######= ##:.+##########%#",
+            "#####*+.  =*********+++++++++++++++-  :+++***++:  .=***** -***#+.:##### -##= ###### =#+ ##:.######= *###*. ..+#######",
+            "######+.  =***+:    .=+:              :+++++==****= -**** -*****:.##### -##- #####:.*#+ ##- +#####- ##++####+ +######",
+            "######+   =**:   ...=+:....   ........-++++*- .=+=..***** -*****=..++=..*##- ++=: .###+ ###+.:**= .###- -**= -#######",
+            "######+.  =**.  =+*+++++++=  .+++++-..-+++++++++++*****************++**#*##*****#######*#####****########***#########",
+            "######+.  =**:   :---=++++=  .+++++-  :+++++--------------+*+---+*****+----+####*=-::--=#######+--=#######====*######",
+            "######+.  =***+.       :++=  .+++++-  :+++++.             -*+   -****-   .**#*=           +####-   *######:   +######",
+            "######+.  =*******++=.  -+=  .+++++-  :++++++****-   =******+   -**-    =**#*.   -*###*:   :###-   *######:   +######",
+            "#######*************+.  -+=  :+++++-  :++++******-   =******+   -*.   -****#:   -#######:   =##-   *######:   +######",
+            "######+.               :++=  :+++++-  :++++******-   =******+        :*****#.   #########   -##-              +######",
+            "######+.   ...  ....-+++++=..:+++++-  :+*********-   =******+         .***##.   ########*   -##-   -------.   +######",
+            "######+.  =**************+++++++++*-  :+*********-   =******+   .**=    =###+   .*#####*    *##-   *######:   +######",
+            "#######-                              -**********-   +******+   -****.   -###*     -+:    .####-   *######:   +######",
+            "########*.                          .+***********-   +******+   -*###*:   .*###+         *#####-   *######:   +####%#",
+            "%%%%%%%%###############**************************************************#################################################%%##",
+            "%%%%%%%%%#############********************************************##########################################%%%%%%%%%%%%%%%",
+            "%%%%%%%%%%##############*************************************################################%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",
+            "%%%%%%%%%%%################*****************************###################################%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%",
+            "%%%%%%%%%%%%####################**************######################################%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"
+    };
+
+    private static final int BOX_WIDTH = 125;
 
     public static void printEnable(Logger logger, String version, int announcementCount,
             boolean redisEnabled, boolean discordEnabled, boolean foliaReady) {
@@ -25,24 +58,35 @@ public final class StartupBanner {
         logger.info("");
         logger.info(top);
         logger.info(empty);
-        logger.info("|          AdvancedAnnouncer   v" + padRight(version, 24) + "  |");
-        logger.info("|          Modern Announcement Engine                      |");
-        logger.info(empty);
-        logger.info(sep);
-        logger.info(empty);
-        for (String line : STUDIOS_ART) {
-            logger.info("|   " + padRight(line, BOX_WIDTH - 3) + "|");
+        int logoWidth = maxLineWidth(LOGO_ART);
+        int logoPad = (BOX_WIDTH - logoWidth) / 2;
+        for (String line : LOGO_ART) {
+            logger.info("|" + repeat(" ", logoPad) + padRight(line, BOX_WIDTH - logoPad) + "|");
         }
         logger.info(empty);
         logger.info(sep);
         logger.info(empty);
-        logger.info("|   Announcements : " + padRight(String.valueOf(announcementCount), 38) + "|");
-        logger.info("|   Redis         : " + padRight(statusLabel(redisEnabled), 38) + "|");
-        logger.info("|   Discord       : " + padRight(statusLabel(discordEnabled), 38) + "|");
-        logger.info("|   Folia         : " + padRight(statusLabel(foliaReady), 38) + "|");
-        logger.info("|   Platform      : " + padRight("Paper/Spigot 1.21.x", 38) + "|");
+        int studioWidth = maxLineWidth(STUDIOS_TKOH_ART);
+        int studioPad = (BOX_WIDTH - studioWidth) / 2;
+        for (String line : STUDIOS_TKOH_ART) {
+            logger.info("|" + repeat(" ", studioPad) + padRight(line, BOX_WIDTH - studioPad) + "|");
+        }
+        logger.info(empty);
+        logger.info(sep);
+        logger.info(empty);
+        logger.info("|  " + padRight("Version      : " + version, BOX_WIDTH - 2) + "|");
+        logger.info("|  " + padRight("Announcements: " + announcementCount + " loaded", BOX_WIDTH - 2) + "|");
+        logger.info("|  " + padRight("Platform     : Paper/Spigot 1.21.x", BOX_WIDTH - 2) + "|");
+        logger.info(empty);
+        logger.info(sep);
+        logger.info(empty);
+        logger.info("|  " + padRight("Redis   : " + statusLabel(redisEnabled), BOX_WIDTH - 2) + "|");
+        logger.info("|  " + padRight("Discord : " + statusLabel(discordEnabled), BOX_WIDTH - 2) + "|");
+        logger.info("|  " + padRight("Folia   : " + statusLabel(foliaReady), BOX_WIDTH - 2) + "|");
         logger.info(empty);
         logger.info(top);
+        logger.info("");
+        logger.info("  Type /announcer help to get started.");
         logger.info("");
     }
 
@@ -50,14 +94,14 @@ public final class StartupBanner {
         String top = "+" + repeat("=", BOX_WIDTH) + "+";
         logger.info("");
         logger.info(top);
-        logger.info("|   AdvancedAnnouncer  v" + padRight(version, 34) + "|");
-        logger.info("|   Disabled successfully.                                 |");
+        logger.info("|  " + padRight("AdvancedAnnouncer v" + version, BOX_WIDTH - 2) + "|");
+        logger.info("|  " + padRight("Disabled successfully.", BOX_WIDTH - 2) + "|");
         logger.info(top);
         logger.info("");
     }
 
     private static String statusLabel(boolean enabled) {
-        return enabled ? "ON" : "OFF";
+        return enabled ? "ON " : "OFF";
     }
 
     private static String repeat(String s, int count) {
@@ -73,5 +117,15 @@ public final class StartupBanner {
             return value.substring(0, length);
         }
         return value + " ".repeat(length - value.length());
+    }
+
+    private static int maxLineWidth(String[] lines) {
+        int max = 0;
+        for (String line : lines) {
+            if (line.length() > max) {
+                max = line.length();
+            }
+        }
+        return max;
     }
 }
