@@ -81,7 +81,7 @@ public final class PriorityBossBarService implements AutoCloseable {
         manager.clearAll();
     }
 
-    private void display(PriorityNotification<BossBarPayload> notification) {
+    private synchronized void display(PriorityNotification<BossBarPayload> notification) {
         String audienceId = notification.audienceId();
         cancel(finishTasks.remove(audienceId));
         cancel(progressTasks.remove(audienceId));

@@ -4,15 +4,15 @@ import dev.studio.announcer.api.discord.DiscordInboundMessage;
 import dev.studio.announcer.api.discord.DiscordOutboundMessage;
 import dev.studio.announcer.api.service.DiscordBridgeService;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public final class DiscordSrvBridgeService implements DiscordBridgeService {
     private final DiscordSrvSettings settings;
-    private final Map<String, Instant> lastAcceptedByUser = new HashMap<>();
+    private final Map<String, Instant> lastAcceptedByUser = new ConcurrentHashMap<>();
     private Consumer<DiscordInboundMessage> inboundHandler = message -> {
     };
 

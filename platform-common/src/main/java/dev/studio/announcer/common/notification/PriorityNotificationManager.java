@@ -15,7 +15,7 @@ public final class PriorityNotificationManager<T> {
     public synchronized PriorityNotificationDecision<T> submit(PriorityNotification<T> notification, Instant now) {
         Instant safeNow = safeNow(now);
         AudienceState<T> state = state(notification.audienceId());
-        expireActive(state, safeNow);
+        Optional<PriorityNotification<T>> expiredPromoted = expireActive(state, safeNow);
 
         Instant lastAccepted = state.lastAccepted.get(notification.id());
         if (lastAccepted != null
@@ -24,7 +24,7 @@ public final class PriorityNotificationManager<T> {
             return new PriorityNotificationDecision<>(
                     PriorityNotificationDecisionType.SUPPRESSED,
                     Optional.empty(),
-                    Optional.empty());
+                    expiredPromoted);
         }
         state.lastAccepted.put(notification.id(), safeNow);
 
@@ -33,6 +33,26 @@ public final class PriorityNotificationManager<T> {
             return new PriorityNotificationDecision<>(
                     PriorityNotificationDecisionType.DISPLAY_NOW,
                     Optional.of(notification),
+                    expiredPromoted);
+        }
+
+        if (expiredPromoted.isPresent()) {
+            PriorityNotification<T> promoted = expiredPromoted.get();
+            if (notification.priority() > promoted.priority()) {
+                PriorityNotification<T> paused = remainingNotification(state.active, safeNow);
+                if (paused != null) {
+                    enqueue(state, paused);
+                }
+                activate(state, notification, safeNow);
+                return new PriorityNotificationDecision<>(
+                        PriorityNotificationDecisionType.DISPLAY_NOW,
+                        Optional.of(notification),
+                        Optional.ofNullable(paused));
+            }
+            enqueue(state, notification);
+            return new PriorityNotificationDecision<>(
+                    PriorityNotificationDecisionType.DISPLAY_NOW,
+                    expiredPromoted,
                     Optional.empty());
         }
 
@@ -103,11 +123,12 @@ public final class PriorityNotificationManager<T> {
         return Optional.of(next.notification());
     }
 
-    private void expireActive(AudienceState<T> state, Instant now) {
+    private Optional<PriorityNotification<T>> expireActive(AudienceState<T> state, Instant now) {
         if (state.active != null && !now.isBefore(state.active.expiresAt())) {
             state.active = null;
-            promoteNext(state, now);
+            return promoteNext(state, now);
         }
+        return Optional.empty();
     }
 
     private PriorityNotification<T> remainingNotification(ActiveNotification<T> active, Instant now) {

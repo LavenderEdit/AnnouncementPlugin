@@ -72,7 +72,7 @@ public final class PriorityActionBarService implements AutoCloseable {
         touchedAudiences.clear();
     }
 
-    private void display(PriorityNotification<Component> notification) {
+    private synchronized void display(PriorityNotification<Component> notification) {
         String audienceId = notification.audienceId();
         ScheduledTask previousTask = activeTasks.remove(audienceId);
         if (previousTask != null) {
