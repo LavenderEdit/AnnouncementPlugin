@@ -35,7 +35,9 @@ class InternalPlaceholderResolverTest {
                 "server_group", "survival"));
 
         String resolved = resolver.resolve("%player_displayname% %server_group% %time% %date%", context);
-
         assertEquals("Nyx survival 15:30:45 2026-06-11", resolved);
+
+        String resolvedBraces = resolver.resolve("{player_displayname} {server_group} {time} {date}", context);
+        assertEquals("Nyx survival 15:30:45 2026-06-11", resolvedBraces);
     }
 }
