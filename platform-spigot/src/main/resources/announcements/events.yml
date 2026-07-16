@@ -1,10 +1,31 @@
 announcements:
   join_welcome:
     name: Join Welcome
-    enabled: false
+    enabled: true
     type: EVENT_JOIN
     channels:
       - CHAT
+      - TITLE
+      - ACTIONBAR
+      - SOUND
     messages:
-      - "<gray>Hello <yellow>{player_name}</yellow>!</gray>"
-    priority: 0
+      - ""
+      - "<center><gradient:#00d2ff:#3a7bd5><strikethrough>                              </strikethrough></gradient></center>"
+      - "<center><bold><gradient:#f12711:#f5af19>¡BIENVENIDO AL SERVIDOR!</gradient></bold></center>"
+      - "<center><gray>Nos alegra verte por aquí,</gray> <white><bold>{player_name}</bold></white><gray>!</gray></center>"
+      - "<center><gradient:#00d2ff:#3a7bd5><strikethrough>                              </strikethrough></gradient></center>"
+      - ""
+    title:
+      title: "<bold><gradient:#f12711:#f5af19>¡BIENVENIDO!</gradient></bold>"
+      subtitle: "<gray>Disfruta tu estancia, <white>{player_name}</white></gray>"
+      fade-in: "PT0.5S"
+      stay: "PT3S"
+      fade-out: "PT1S"
+    actionbar:
+      message: "<gradient:#00d2ff:#3a7bd5>✦ {player_name} acaba de entrar ✦</gradient>"
+      duration: "PT3S"
+    sound:
+      key: "minecraft:entity.player.levelup"
+      volume: 1.0
+      pitch: 1.0
+    priority: 10
