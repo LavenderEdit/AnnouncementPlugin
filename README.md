@@ -38,13 +38,13 @@ Desde la raiz del proyecto:
 El plugin se genera en:
 
 ```text
-platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar
+platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar
 ```
 
 ## Instalacion
 
 1. Compila el proyecto o descarga el `.jar` generado.
-2. Copia `platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar` a la carpeta `plugins/` de tu servidor Paper/Spigot.
+2. Copia `platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar` a la carpeta `plugins/` de tu servidor Paper/Spigot.
 3. Inicia el servidor.
 4. Verifica que se cree `plugins/AdvancedAnnouncer/`.
 5. Ejecuta `/announcer version` y `/announcer debug`.
@@ -190,7 +190,7 @@ DiscordSRV es `softdepend`: si no esta instalado, el plugin arranca igual.
 ## Guia Rapida De Prueba En Minecraft
 
 1. Ejecuta `.\gradlew.bat :platform-spigot:build`.
-2. Copia `platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar` a `plugins/`.
+2. Copia `platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar` a `plugins/`.
 3. Inicia Paper 1.21.x.
 4. Entra al servidor como operador.
 5. Ejecuta `/announcer version`.

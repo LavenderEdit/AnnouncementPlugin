@@ -1,5 +1,5 @@
 group = "dev.studio"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.5-SNAPSHOT"
 
 subprojects {
     apply(plugin = "java-library")
