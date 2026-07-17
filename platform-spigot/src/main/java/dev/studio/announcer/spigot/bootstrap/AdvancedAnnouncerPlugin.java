@@ -125,10 +125,11 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new SpigotProfileAvatarTextureSource());
         String serverId = getConfig().getString("server.id", getServer().getName().toLowerCase(java.util.Locale.ROOT));
         Set<String> serverGroups = stringSet(getConfig().getStringList("server.groups"));
+        SpigotAudienceProvider audienceProvider = new SpigotAudienceProvider();
         announcementDispatcher = new SpigotAnnouncementDispatcher(
                 audiences,
                 renderer,
-                new SpigotAudienceProvider(),
+                audienceProvider,
                 soundService,
                 actionBarService,
                 bossBarService,
@@ -180,7 +181,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new ConfigBackupService(configurationPaths.backupsDirectory()),
                 reloadService,
                 new LegacyWelcomeDonationsMigrator()));
-        AnvilTextInputService anvilInputService = new AnvilTextInputService(renderer);
+        AnvilTextInputService anvilInputService = new AnvilTextInputService(this, renderer, audienceProvider);
         announcementEditorService = new SpigotAnnouncementEditorService(
                 this,
                 announcementRepository,

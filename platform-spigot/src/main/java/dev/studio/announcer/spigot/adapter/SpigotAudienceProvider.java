@@ -43,4 +43,31 @@ public class SpigotAudienceProvider {
         org.bukkit.Server server = Bukkit.getServer();
         return server != null ? server.getMaxPlayers() : 100;
     }
+
+    public org.bukkit.inventory.Inventory createAnvilInventory(Player player, String title) {
+        return Bukkit.createInventory(player, org.bukkit.event.inventory.InventoryType.ANVIL, title);
+    }
+
+    public org.bukkit.inventory.ItemStack createAnvilItem(String name) {
+        org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(org.bukkit.Material.PAPER);
+        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(name);
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    public String getAnvilRenameText(org.bukkit.inventory.Inventory inventory) {
+        if (inventory instanceof org.bukkit.inventory.AnvilInventory anvilInventory) {
+            org.bukkit.inventory.ItemStack result = anvilInventory.getItem(2);
+            if (result != null && result.hasItemMeta()) {
+                org.bukkit.inventory.meta.ItemMeta meta = result.getItemMeta();
+                if (meta != null && meta.hasDisplayName()) {
+                    return meta.getDisplayName().trim();
+                }
+            }
+        }
+        return "";
+    }
 }

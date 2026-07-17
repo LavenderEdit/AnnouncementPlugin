@@ -4,26 +4,40 @@ import dev.studio.announcer.api.message.MessageRenderer;
 import dev.studio.announcer.domain.announcement.AnnouncementId;
 import dev.studio.announcer.domain.validation.ValidationResult;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import dev.studio.announcer.spigot.adapter.SpigotAudienceProvider;
 
 public final class AnvilTextInputService implements Listener {
+    private final JavaPlugin plugin;
     private final MessageRenderer<Component> renderer;
-    private final Map<UUID, PendingAnvilInput> pendingInputs = new ConcurrentHashMap<>();
+    private final SpigotAudienceProvider audienceProvider;
+    private final Map<UUID, PendingInput> pendingAnvilInputs = new ConcurrentHashMap<>();
+    private final Map<UUID, PendingInput> pendingChatInputs = new ConcurrentHashMap<>();
 
-    public AnvilTextInputService(MessageRenderer<Component> renderer) {
-        this.renderer = renderer;
+    public AnvilTextInputService(JavaPlugin plugin, MessageRenderer<Component> renderer, SpigotAudienceProvider audienceProvider) {
+        this.plugin = plugin;
+        this.renderer = Objects.requireNonNull(renderer, "renderer");
+        this.audienceProvider = Objects.requireNonNull(audienceProvider, "audienceProvider");
     }
 
     public ValidationResult validateMiniMessage(String input) {
@@ -41,49 +55,78 @@ public final class AnvilTextInputService implements Listener {
         return AnnouncementId.of(normalized);
     }
 
-    public void openRenameAnvil(Player player, AnnouncementId announcementId, Consumer<String> callback) {
-        Inventory anvil = Bukkit.createInventory(null, 36, "Renombrar anuncio");
-        ItemStack nameInput = new ItemStack(Material.NAME_TAG);
-        ItemMeta meta = nameInput.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(announcementId.value());
-            nameInput.setItemMeta(meta);
+    public void openRenameAnvil(Player player, AnnouncementId announcementId, String currentName, Consumer<String> callback) {
+        String title = "Renombrar anuncio";
+        Inventory anvil = audienceProvider.createAnvilInventory(player, title);
+        
+        ItemStack paper = audienceProvider.createAnvilItem(currentName);
+        if (paper != null) {
+            anvil.setItem(0, paper);
         }
-        anvil.setItem(0, nameInput);
-        ItemStack result = new ItemStack(Material.PAPER);
-        ItemMeta resultMeta = result.getItemMeta();
-        if (resultMeta != null) {
-            resultMeta.setDisplayName("\u00a7aClick para confirmar");
-            result.setItemMeta(resultMeta);
-        }
-        anvil.setItem(2, result);
-        pendingInputs.put(player.getUniqueId(), new PendingAnvilInput(announcementId, callback));
+
+        pendingAnvilInputs.put(player.getUniqueId(), new PendingInput(currentName, callback));
         player.openInventory(anvil);
     }
 
     public void openMessageEditAnvil(Player player, AnnouncementId announcementId, int messageIndex,
                                       String currentMessage, Consumer<String> callback) {
-        Inventory anvil = Bukkit.createInventory(null, 36, "Editar mensaje #" + (messageIndex + 1));
-        ItemStack nameInput = new ItemStack(Material.NAME_TAG);
-        ItemMeta meta = nameInput.getItemMeta();
-        if (meta != null) {
-            String preview = currentMessage.replaceAll("<[^>]+>", "");
-            if (preview.length() > 30) {
-                preview = preview.substring(0, 27) + "...";
-            }
-            meta.setDisplayName(preview);
-            nameInput.setItemMeta(meta);
+        // Use chat capture for editing long messages
+        player.closeInventory();
+        player.sendMessage(Component.text(""));
+        player.sendMessage(Component.text("=== EDITAR MENSAJE ===").color(NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Escribe el nuevo mensaje en el chat y presiona Enter.").color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("Puedes utilizar tags de MiniMessage y caracteres Unicode (tildes, símbolos, etc.).").color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("Escribe 'cancelar' para volver sin realizar cambios.").color(NamedTextColor.RED));
+        player.sendMessage(Component.text(""));
+
+        pendingChatInputs.put(player.getUniqueId(), new PendingInput(currentMessage, callback));
+    }
+
+    void triggerAnvilConfirmForTest(Player player, Inventory top) {
+        PendingInput input = pendingAnvilInputs.get(player.getUniqueId());
+        if (input != null) {
+            handleAnvilClickSlot2(player, top, input);
         }
-        anvil.setItem(0, nameInput);
-        ItemStack result = new ItemStack(Material.PAPER);
-        ItemMeta resultMeta = result.getItemMeta();
-        if (resultMeta != null) {
-            resultMeta.setDisplayName("\u00a7aClick para confirmar");
-            result.setItemMeta(resultMeta);
+    }
+
+    void handleAnvilClickSlot2(Player player, Inventory top, PendingInput input) {
+        String value = audienceProvider.getAnvilRenameText(top);
+        if (value != null && !value.isEmpty()) {
+            input.confirm();
+            input.callback().accept(value);
+            player.closeInventory();
+            return;
         }
-        anvil.setItem(2, result);
-        pendingInputs.put(player.getUniqueId(), new PendingAnvilInput(announcementId, callback));
-        player.openInventory(anvil);
+        // If empty or invalid, treat as cancel or keep original
+        input.confirm(); // set to confirmed to prevent double-firing close event
+        input.callback().accept(input.fallback());
+        player.closeInventory();
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) {
+            return;
+        }
+        Inventory top = event.getView().getTopInventory();
+        if (!(top instanceof org.bukkit.inventory.AnvilInventory)) {
+            return;
+        }
+        PendingInput input = pendingAnvilInputs.get(player.getUniqueId());
+        if (input == null) {
+            return;
+        }
+        event.setCancelled(true);
+        if (event.getRawSlot() == 2) {
+            handleAnvilClickSlot2(player, top, input);
+        }
+    }
+
+    @EventHandler
+    public void onPrepareAnvil(PrepareAnvilEvent event) {
+        if (event.getInventory() instanceof org.bukkit.inventory.AnvilInventory anvilInventory) {
+            anvilInventory.setRepairCost(0);
+        }
     }
 
     @EventHandler
@@ -91,27 +134,79 @@ public final class AnvilTextInputService implements Listener {
         if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
-        PendingAnvilInput input = pendingInputs.remove(player.getUniqueId());
+        PendingInput input = pendingAnvilInputs.remove(player.getUniqueId());
+        if (input != null && !input.confirmed()) {
+            // Cancelled via closing GUI, execute callback with fallback to reopen menu
+            input.confirm();
+            input.callback().accept(input.fallback());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerChat(AsyncPlayerChatEvent event) {
+        Player player = event.getPlayer();
+        PendingInput input = pendingChatInputs.get(player.getUniqueId());
         if (input == null) {
             return;
         }
-        ItemStack resultItem = event.getInventory().getItem(2);
-        if (resultItem != null && resultItem.hasItemMeta()) {
-            ItemMeta meta = resultItem.getItemMeta();
-            if (meta != null && meta.hasDisplayName()) {
-                String value = meta.getDisplayName();
-                if (value != null && !value.isBlank()) {
-                    input.callback().accept(value);
-                    return;
-                }
-            }
+        event.setCancelled(true);
+        String message = event.getMessage();
+        if (message.equalsIgnoreCase("cancelar") || message.equalsIgnoreCase("cancel")) {
+            pendingChatInputs.remove(player.getUniqueId());
+            player.sendMessage(Component.text("Edición cancelada.").color(NamedTextColor.RED));
+            // Reopen GUI by executing callback with original value on primary thread
+            Bukkit.getScheduler().runTask(plugin, () -> input.callback().accept(input.fallback()));
+            return;
         }
-        input.callback().accept(input.fallback());
+
+        // Validate MiniMessage syntax
+        ValidationResult validation = validateMiniMessage(message);
+        if (!validation.valid()) {
+            player.sendMessage(Component.text("Mensaje MiniMessage inválido: " + String.join(", ", validation.errors())).color(NamedTextColor.RED));
+            player.sendMessage(Component.text("Por favor, vuelve a intentarlo o escribe 'cancelar'."));
+            return;
+        }
+
+        pendingChatInputs.remove(player.getUniqueId());
+        // Execute callback with new message on primary thread
+        Bukkit.getScheduler().runTask(plugin, () -> input.callback().accept(message));
     }
 
-    private record PendingAnvilInput(AnnouncementId announcementId, Consumer<String> callback) {
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        pendingAnvilInputs.remove(event.getPlayer().getUniqueId());
+        pendingChatInputs.remove(event.getPlayer().getUniqueId());
+    }
+
+    public void clearAll() {
+        pendingAnvilInputs.clear();
+        pendingChatInputs.clear();
+    }
+
+    private static final class PendingInput {
+        private final String fallback;
+        private final Consumer<String> callback;
+        private boolean confirmed;
+
+        PendingInput(String fallback, Consumer<String> callback) {
+            this.fallback = fallback;
+            this.callback = callback;
+        }
+
         String fallback() {
-            return announcementId.value();
+            return fallback;
+        }
+
+        Consumer<String> callback() {
+            return callback;
+        }
+
+        boolean confirmed() {
+            return confirmed;
+        }
+
+        void confirm() {
+            this.confirmed = true;
         }
     }
 }

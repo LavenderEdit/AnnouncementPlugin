@@ -124,6 +124,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
                 .filter(session -> !session.cancelled())
                 .forEach(EditorSession::cancel);
         sessions.clear();
+        inputService.clearAll();
     }
 
     private void handleMain(Player player, EditorMenuHolder holder, int slot) {
@@ -175,7 +176,8 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             holder.session().toggle(id);
             next(player, () -> detailMenu.open(player, holder.session(), id));
         } else if (slot == 11) {
-            inputService.openRenameAnvil(player, id, newName -> {
+            Announcement currentForRename = holder.session().draft(id).orElseThrow(() -> new IllegalStateException("Draft not found: " + id.value()));
+            inputService.openRenameAnvil(player, id, currentForRename.name(), newName -> {
                 holder.session().rename(id, newName);
                 player.sendMessage("Nombre actualizado: " + newName);
                 next(player, () -> detailMenu.open(player, holder.session(), id));
