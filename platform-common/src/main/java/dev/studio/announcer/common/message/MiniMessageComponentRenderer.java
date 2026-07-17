@@ -28,6 +28,10 @@ public final class MiniMessageComponentRenderer implements MessageRenderer<Compo
                 : placeholderResolver;
     }
 
+    public PlaceholderResolver placeholderResolver() {
+        return placeholderResolver;
+    }
+
     @Override
     public ValidationResult validate(String input) {
         ValidationResult clickValidation = validateClickCommand(input);
