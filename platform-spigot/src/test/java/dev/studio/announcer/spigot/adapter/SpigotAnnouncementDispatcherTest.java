@@ -261,7 +261,116 @@ class SpigotAnnouncementDispatcherTest {
         );
     }
 
+    @Test
+    void joinStateConditionFirstJoinEvaluatesCorrectly() {
+        UUID playerId = UUID.randomUUID();
+        Player newPlayer = mockPlayer(playerId, "Newbie", false); // hasPlayedBefore = false -> FIRST_JOIN
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(newPlayer);
+
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider);
+        
+        Announcement firstJoinAnn = Announcement.builder(AnnouncementId.of("id1"), "First Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Welcome first time!"))
+                .conditions(List.of("join-state: FIRST_JOIN"))
+                .build();
+
+        Announcement recurringAnn = Announcement.builder(AnnouncementId.of("id2"), "Recurring Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Welcome back!"))
+                .conditions(List.of("join-state: RECURRING"))
+                .build();
+
+        // Dispatch for new player
+        DeliverySummary summary1 = dispatcher.dispatch(firstJoinAnn, Audience.player(playerId.toString()), playerId.toString());
+        assertEquals(1, summary1.delivered());
+
+        DeliverySummary summary2 = dispatcher.dispatch(recurringAnn, Audience.player(playerId.toString()), playerId.toString());
+        assertEquals(0, summary2.delivered()); // Skipped because player is FIRST_JOIN but condition requires RECURRING
+    }
+
+    @Test
+    void joinStatePlaceholderResolvesToFirstJoin() {
+        UUID playerId = UUID.randomUUID();
+        Player newPlayer = mockPlayer(playerId, "Newbie", false); // hasPlayedBefore = false -> FIRST_JOIN
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(newPlayer);
+
+        List<Component> sent = new ArrayList<>();
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider, sent);
+
+        Announcement announcement = Announcement.builder(AnnouncementId.of("id1"), "First Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("State: {join_state}"))
+                .build();
+
+        dispatcher.dispatch(announcement, Audience.player(playerId.toString()), playerId.toString());
+
+        assertEquals(1, sent.size());
+        String content = ((net.kyori.adventure.text.TextComponent) sent.get(0)).content();
+        assertEquals("State: FIRST_JOIN", content);
+    }
+
+    @Test
+    void joinStatePlaceholderResolvesToRecurring() {
+        UUID playerId = UUID.randomUUID();
+        Player returningPlayer = mockPlayer(playerId, "Regular", true); // hasPlayedBefore = true -> RECURRING
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(returningPlayer);
+
+        List<Component> sent = new ArrayList<>();
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider, sent);
+
+        Announcement announcement = Announcement.builder(AnnouncementId.of("id1"), "Recurring Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("State: {join_state}"))
+                .build();
+
+        dispatcher.dispatch(announcement, Audience.player(playerId.toString()), playerId.toString());
+
+        assertEquals(1, sent.size());
+        String content = ((net.kyori.adventure.text.TextComponent) sent.get(0)).content();
+        assertEquals("State: RECURRING", content);
+    }
+
+    @Test
+    void joinStateConditionRecurringEvaluatesCorrectly() {
+        UUID playerId = UUID.randomUUID();
+        Player returningPlayer = mockPlayer(playerId, "Regular", true); // hasPlayedBefore = true -> RECURRING
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(returningPlayer);
+
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider);
+
+        Announcement firstJoinAnn = Announcement.builder(AnnouncementId.of("id1"), "First Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Welcome first time!"))
+                .conditions(List.of("join-state: FIRST_JOIN"))
+                .build();
+
+        Announcement recurringAnn = Announcement.builder(AnnouncementId.of("id2"), "Recurring Join")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Welcome back!"))
+                .conditions(List.of("join-state: RECURRING"))
+                .build();
+
+        // Dispatch for returning player
+        DeliverySummary summary1 = dispatcher.dispatch(firstJoinAnn, Audience.player(playerId.toString()), playerId.toString());
+        assertEquals(0, summary1.delivered()); // Skipped because player is RECURRING but condition requires FIRST_JOIN
+
+        DeliverySummary summary2 = dispatcher.dispatch(recurringAnn, Audience.player(playerId.toString()), playerId.toString());
+        assertEquals(1, summary2.delivered());
+    }
     private Player mockPlayer(UUID uuid, String name) {
+        return mockPlayer(uuid, name, true);
+    }
+
+    private Player mockPlayer(UUID uuid, String name, boolean playedBefore) {
         World mockWorld = (World) Proxy.newProxyInstance(
                 World.class.getClassLoader(),
                 new Class<?>[]{World.class},
@@ -280,6 +389,7 @@ class SpigotAnnouncementDispatcherTest {
                     case "getName" -> name;
                     case "getDisplayName" -> name;
                     case "getWorld" -> mockWorld;
+                    case "hasPlayedBefore" -> playedBefore;
                     case "hasPermission" -> true;
                     case "hashCode" -> uuid.hashCode();
                     case "equals" -> args[0] != null && args[0].getClass() == proxy.getClass() && uuid.equals(((Player) args[0]).getUniqueId());

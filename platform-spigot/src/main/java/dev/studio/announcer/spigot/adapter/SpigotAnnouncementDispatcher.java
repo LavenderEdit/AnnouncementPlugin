@@ -244,6 +244,11 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
         if (condition == null || condition.isBlank()) {
             return true;
         }
+        String cleanCondition = condition.trim();
+        Boolean joinStateResult = evaluateJoinStateCondition(cleanCondition, context);
+        if (joinStateResult != null) {
+            return joinStateResult;
+        }
         String resolved = resolver.resolve(condition, context).trim();
         String operator = null;
         int opIdx = -1;
@@ -305,6 +310,16 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             }
         }
         return false;
+    }
+
+    private Boolean evaluateJoinStateCondition(String cleanCondition, PlaceholderContext context) {
+        if (cleanCondition.equalsIgnoreCase("join-state: FIRST_JOIN")) {
+            return context.value("join_state").orElse("RECURRING").equals("FIRST_JOIN");
+        }
+        if (cleanCondition.equalsIgnoreCase("join-state: RECURRING")) {
+            return context.value("join_state").orElse("RECURRING").equals("RECURRING");
+        }
+        return null;
     }
 
     private void sendTitle(Player player, Announcement announcement, PlaceholderContext context) {
@@ -416,11 +431,14 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             values.put("actor_displayname", actor.getDisplayName());
             values.put("actor_uuid", actor.getUniqueId().toString());
             values.put("actor_world", actor.getWorld().getName());
+            boolean isFirst = !actor.hasPlayedBefore();
+            values.put("join_state", isFirst ? "FIRST_JOIN" : "RECURRING");
         } else {
             values.put("actor_name", "");
             values.put("actor_displayname", "");
             values.put("actor_uuid", "");
             values.put("actor_world", "");
+            values.put("join_state", "RECURRING");
         }
         
         values.put("server_name", audienceProvider.serverName().toLowerCase(Locale.ROOT));

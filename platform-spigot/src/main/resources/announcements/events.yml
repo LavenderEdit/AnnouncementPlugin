@@ -3,6 +3,8 @@ announcements:
     name: "Bienvenida al Entrar"
     enabled: true
     type: EVENT_JOIN
+    conditions:
+      - "join-state: RECURRING"
     channels:
       - CHAT
       - TITLE
@@ -96,6 +98,8 @@ announcements:
     name: "Primera Vez"
     enabled: true
     type: EVENT_JOIN
+    conditions:
+      - "join-state: FIRST_JOIN"
     channels:
       - CHAT
       - TITLE
