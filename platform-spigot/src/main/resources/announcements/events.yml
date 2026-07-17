@@ -13,19 +13,19 @@ announcements:
       - "<center><gradient:#00d2ff:#3a7bd5:#7b2ff7><strikethrough>                                    </strikethrough></gradient></center>"
       - "<center><bold><gradient:#f12711:#f5af19:#f5af19>  ¡BIENVENIDO AL SERVIDOR!  </gradient></bold></center>"
       - ""
-      - "<center><gray>  Hola </gray><white><bold>{player_name}</bold></white><gray>, nos alegra verte por aquí</gray></center>"
+      - "<center><gray>  Hola </gray><white><bold>{viewer_name}</bold></white><gray>, nos alegra verte por aquí</gray></center>"
       - "<center><gray>  </gray><gradient:#00d2ff:#3a7bd5><bold>Disfruta tu estancia</bold></gradient></center>"
       - ""
       - "<center><gradient:#00d2ff:#3a7bd5:#7b2ff7><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     title:
       title: "<bold><gradient:#f12711:#f5af19:#f5af19>¡BIENVENIDO!</gradient></bold>"
-      subtitle: "<gray>Disfruta tu estancia, </gray><white><bold>{player_name}</bold></white>"
+      subtitle: "<gray>Disfruta tu estancia, </gray><white><bold>{viewer_name}</bold></white>"
       fade-in: "PT0.5S"
       stay: "PT3S"
       fade-out: "PT1S"
     actionbar:
-      message: "<gradient:#00d2ff:#3a7bd5:#7b2ff7>✦ </gradient><white>{player_name}</white><gradient:#7b2ff7:#3a7bd5:#00d2ff> acaba de entrar ✦</gradient>"
+      message: "<gradient:#00d2ff:#3a7bd5:#7b2ff7>✦ </gradient><white>{actor_name}</white><gradient:#7b2ff7:#3a7bd5:#00d2ff> acaba de entrar ✦</gradient>"
       duration: "PT3S"
     sound:
       key: "minecraft:entity.player.levelup"
@@ -43,13 +43,13 @@ announcements:
     messages:
       - ""
       - "<center><gradient:#e74c3c:#c0392b><strikethrough>                                    </strikethrough></gradient></center>"
-      - "<center><gray>  </gray><white><bold>{player_name}</bold></white><gray> ha abandonado el servidor</gray></center>"
+      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha abandonado el servidor</gray></center>"
       - "<center><gray>  ¡Esperamos verte pronto!</gray></center>"
       - ""
       - "<center><gradient:#e74c3c:#c0392b><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     actionbar:
-      message: "<gradient:#e74c3c:#c0392b>👋 </gradient><white>{player_name}</white><gradient:#c0392b:#e74c3c> se ha desconectado</gradient>"
+      message: "<gradient:#e74c3c:#c0392b>👋 </gradient><white>{actor_name}</white><gradient:#c0392b:#e74c3c> se ha desconectado</gradient>"
       duration: "PT3S"
     priority: 8
 
@@ -63,13 +63,13 @@ announcements:
     messages:
       - ""
       - "<center><gradient:#9b59b6:#8e44ad><strikethrough>                                    </strikethrough></gradient></center>"
-      - "<center><gray>  </gray><white><bold>{player_name}</bold></white><gray> ha muerto</gray></center>"
+      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha muerto</gray></center>"
       - "<center><gray>  ¡Descanse en paz!</gray></center>"
       - ""
       - "<center><gradient:#9b59b6:#8e44ad><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     actionbar:
-      message: "<gradient:#9b59b6:#8e44ad>💀 </gradient><white>{player_name}</white><gradient:#8e44ad:#9b59b6> ha muerto</gradient>"
+      message: "<gradient:#9b59b6:#8e44ad>💀 </gradient><white>{actor_name}</white><gradient:#8e44ad:#9b59b6> ha muerto</gradient>"
       duration: "PT3S"
     priority: 6
 
@@ -83,12 +83,12 @@ announcements:
     messages:
       - ""
       - "<center><gradient:#2ecc71:#27ae60><strikethrough>                                    </strikethrough></gradient></center>"
-      - "<center><gray>  </gray><white><bold>{player_name}</bold></white><gray> ha cambiado de mundo</gray></center>"
+      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha cambiado de mundo</gray></center>"
       - ""
       - "<center><gradient:#2ecc71:#27ae60><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     actionbar:
-      message: "<gradient:#2ecc71:#27ae60>🌍 </gradient><white>{player_name}</white><gradient:#27ae60:#2ecc71> ha cambiado de mundo</gradient>"
+      message: "<gradient:#2ecc71:#27ae60>🌍 </gradient><white>{actor_name}</white><gradient:#27ae60:#2ecc71> ha cambiado de mundo</gradient>"
       duration: "PT3S"
     priority: 5
 
@@ -107,26 +107,26 @@ announcements:
       - "<center><gradient:#f39c12:#e67e22:#d35400><strikethrough>                                          </strikethrough></gradient></center>"
       - "<center><bold><gradient:#f39c12:#e67e22:#d35400>  🌟 ¡NUEVO JUGADOR! 🌟  </gradient></bold></center>"
       - ""
-      - "<center><gray>  </gray><white><bold>{player_name}</bold></white><gray> está por primera vez en el servidor</gray></center>"
+      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> está por primera vez en el servidor</gray></center>"
       - "<center><orange>  ¡Dale la bienvenida!</orange></center>"
       - ""
       - "<center><gradient:#f39c12:#e67e22:#d35400><strikethrough>                                          </strikethrough></gradient></center>"
       - ""
     title:
       title: "<bold><gradient:#f39c12:#e67e22:#d35400>🌟 ¡NUEVO! 🌟</gradient></bold>"
-      subtitle: "<orange>Bienvenido, </orange><white><bold>{player_name}</bold></white>"
+      subtitle: "<orange>Bienvenido, </orange><white><bold>{actor_name}</bold></white>"
       fade-in: "PT0.5S"
       stay: "PT5S"
       fade-out: "PT2S"
     actionbar:
-      message: "<gradient:#f39c12:#e67e22:#d35400>🌟 </gradient><white><bold>{player_name}</bold></white><gradient:#d35400:#e67e22:#f39c12> está por primera vez 🌟</gradient>"
+      message: "<gradient:#f39c12:#e67e22:#d35400>🌟 </gradient><white><bold>{actor_name}</bold></white><gradient:#d35400:#e67e22:#f39c12> está por primera vez 🌟</gradient>"
       duration: "PT5S"
     sound:
       key: "minecraft:entity.player.levelup"
       volume: 1.0
       pitch: 1.5
     bossbar:
-      message: "<gradient:#f39c12:#e67e22:#d35400>🌟 ¡Bienvenido por primera vez, {player_name}! 🌟</gradient>"
+      message: "<gradient:#f39c12:#e67e22:#d35400>🌟 ¡Bienvenido por primera vez, {actor_name}! 🌟</gradient>"
       color: YELLOW
       overlay: PROGRESS
       duration: "PT10S"

@@ -398,9 +398,17 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
     private PlaceholderContext contextFor(Player recipient, Player actor, Announcement announcement) {
         Map<String, String> values = new HashMap<>();
         
+        // Viewer placeholders
+        values.put("viewer_name", recipient.getName());
+        values.put("viewer_displayname", recipient.getDisplayName());
+        values.put("viewer_uuid", recipient.getUniqueId().toString());
+        values.put("viewer_world", recipient.getWorld().getName());
+        
+        // Backwards compatibility player placeholders
         values.put("player_name", recipient.getName());
         values.put("player_displayname", recipient.getDisplayName());
         values.put("player_uuid", recipient.getUniqueId().toString());
+        values.put("player_world", recipient.getWorld().getName());
         values.put("world", recipient.getWorld().getName());
         
         if (actor != null) {
@@ -408,6 +416,11 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             values.put("actor_displayname", actor.getDisplayName());
             values.put("actor_uuid", actor.getUniqueId().toString());
             values.put("actor_world", actor.getWorld().getName());
+        } else {
+            values.put("actor_name", "");
+            values.put("actor_displayname", "");
+            values.put("actor_uuid", "");
+            values.put("actor_world", "");
         }
         
         values.put("server_name", audienceProvider.serverName().toLowerCase(Locale.ROOT));

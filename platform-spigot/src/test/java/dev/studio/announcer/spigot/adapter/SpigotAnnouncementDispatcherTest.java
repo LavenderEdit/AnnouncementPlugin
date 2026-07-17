@@ -18,6 +18,7 @@ import dev.studio.announcer.spigot.service.PriorityActionBarService;
 import dev.studio.announcer.spigot.service.PriorityBossBarService;
 import java.lang.reflect.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -158,11 +159,69 @@ class SpigotAnnouncementDispatcherTest {
         assertThrows(IllegalArgumentException.class, () -> Audience.player("   "));
     }
 
+    @Test
+    void resolvesActorAndViewerPlaceholdersCorrectly() {
+        UUID aliceId = UUID.randomUUID();
+        Player mockPlayer1 = mockPlayer(aliceId, "Alice");
+        UUID bobId = UUID.randomUUID();
+        Player mockPlayer2 = mockPlayer(bobId, "Bob");
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(mockPlayer1);
+        provider.addPlayer(mockPlayer2);
+
+        List<Component> sent = new ArrayList<>();
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider, sent);
+        Announcement announcement = Announcement.builder(AnnouncementId.of("id"), "Test")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Actor: {actor_name}, Viewer: {viewer_name}, Legacy: {player_name}"))
+                .build();
+
+        // Deliver to Bob (viewer) with Alice as actor
+        dispatcher.dispatch(announcement, Audience.player(bobId.toString()), aliceId.toString());
+
+        assertEquals(1, sent.size());
+        String content = ((net.kyori.adventure.text.TextComponent) sent.get(0)).content();
+        assertEquals("Actor: Alice, Viewer: Bob, Legacy: Bob", content);
+    }
+
+    @Test
+    void resolvesNullActorPlaceholdersToEmptyString() {
+        UUID bobId = UUID.randomUUID();
+        Player mockPlayer2 = mockPlayer(bobId, "Bob");
+
+        FakeSpigotAudienceProvider provider = new FakeSpigotAudienceProvider();
+        provider.addPlayer(mockPlayer2);
+
+        List<Component> sent = new ArrayList<>();
+        SpigotAnnouncementDispatcher dispatcher = createDispatcher(provider, sent);
+        Announcement announcement = Announcement.builder(AnnouncementId.of("id"), "Test")
+                .channels(EnumSet.of(AnnouncementChannel.CHAT))
+                .messages(List.of("Actor: '{actor_name}', Viewer: {viewer_name}"))
+                .build();
+
+        // Deliver to Bob (viewer) with null actor
+        dispatcher.dispatch(announcement, Audience.player(bobId.toString()), null);
+
+        assertEquals(1, sent.size());
+        String content = ((net.kyori.adventure.text.TextComponent) sent.get(0)).content();
+        assertEquals("Actor: '', Viewer: Bob", content);
+    }
+
     private SpigotAnnouncementDispatcher createDispatcher(SpigotAudienceProvider provider) {
+        return createDispatcher(provider, new ArrayList<>());
+    }
+
+    private SpigotAnnouncementDispatcher createDispatcher(SpigotAudienceProvider provider, List<Component> sentComponents) {
         net.kyori.adventure.audience.Audience mockAudience = (net.kyori.adventure.audience.Audience) Proxy.newProxyInstance(
                 net.kyori.adventure.audience.Audience.class.getClassLoader(),
                 new Class<?>[]{net.kyori.adventure.audience.Audience.class},
-                (proxy, method, args) -> null
+                (proxy, method, args) -> {
+                    if (method.getName().equals("sendMessage")) {
+                        sentComponents.add((Component) args[0]);
+                    }
+                    return null;
+                }
         );
 
         BukkitAudiences mockAudiences = (BukkitAudiences) Proxy.newProxyInstance(
@@ -178,7 +237,16 @@ class SpigotAnnouncementDispatcherTest {
 
         MessageRenderer<Component> renderer = new MessageRenderer<>() {
             @Override public ValidationResult validate(String input) { return ValidationResult.ok(); }
-            @Override public Component render(String input, PlaceholderContext context) { return Component.text(input); }
+            @Override public Component render(String input, PlaceholderContext context) {
+                // Perform placeholder replacements for testing
+                String resolved = input;
+                if (context != null) {
+                    for (Map.Entry<String, String> entry : context.values().entrySet()) {
+                        resolved = resolved.replace("{" + entry.getKey() + "}", entry.getValue());
+                    }
+                }
+                return Component.text(resolved);
+            }
         };
 
         return new SpigotAnnouncementDispatcher(
