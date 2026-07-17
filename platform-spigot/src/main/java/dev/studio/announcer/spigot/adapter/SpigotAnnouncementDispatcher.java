@@ -14,6 +14,11 @@ import dev.studio.announcer.domain.announcement.option.TitleOptions;
 import dev.studio.announcer.domain.announcement.option.ToastOptions;
 import dev.studio.announcer.spigot.service.PriorityActionBarService;
 import dev.studio.announcer.spigot.service.PriorityBossBarService;
+import dev.studio.announcer.api.audience.Audience;
+import dev.studio.announcer.api.audience.ActorAudience;
+import dev.studio.announcer.api.audience.AllAudience;
+import dev.studio.announcer.api.audience.OthersAudience;
+import dev.studio.announcer.api.audience.PlayerAudience;
 import dev.studio.announcer.api.placeholder.PlaceholderResolver;
 import dev.studio.announcer.common.message.InternalPlaceholderResolver;
 import dev.studio.announcer.common.message.MiniMessageComponentRenderer;
@@ -81,54 +86,33 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
 
     @Override
     public DeliverySummary broadcast(Announcement announcement) {
-        if (!announcement.enabled()) {
-            return DeliverySummary.empty();
-        }
-        int delivered = 0;
-        int skipped = 0;
-        int invalid = 0;
-        for (Player player : audienceProvider.onlinePlayers()) {
-            if (canReceive(player, null, announcement)) {
-                if (send(player, null, announcement)) {
-                    delivered++;
-                } else {
-                    invalid++;
-                }
-            } else {
-                skipped++;
-            }
-        }
-        return new DeliverySummary(delivered, skipped, invalid);
+        return dispatch(announcement, Audience.all(), null);
     }
 
     @Override
     public DeliverySummary preview(Announcement announcement, String audienceId) {
-        return audienceProvider.findPlayer(audienceId)
-                .map(player -> send(player, null, announcement) ? new DeliverySummary(1, 0, 0) : new DeliverySummary(0, 0, 1))
-                .orElseGet(() -> new DeliverySummary(0, 0, 1));
+        return dispatch(announcement, Audience.player(audienceId), null);
     }
 
     @Override
-    public DeliverySummary dispatch(Announcement announcement, String actorId) {
+    public DeliverySummary dispatch(Announcement announcement, Audience audience, String actorId) {
         if (!announcement.enabled()) {
             return DeliverySummary.empty();
         }
+
         Player actor = null;
         if (actorId != null && !actorId.isBlank()) {
-            try {
-                actor = Bukkit.getPlayer(UUID.fromString(actorId));
-            } catch (IllegalArgumentException e) {
-                actor = Bukkit.getPlayerExact(actorId);
-            }
+            actor = audienceProvider.findPlayer(actorId).orElse(null);
         }
-        if (actor == null) {
-            return DeliverySummary.empty();
-        }
-        String audienceType = announcement.metadata().getOrDefault("audience", "all").toLowerCase(Locale.ROOT);
+
         int delivered = 0;
         int skipped = 0;
         int invalid = 0;
-        if (audienceType.equals("actor") || audienceType.equals("player")) {
+
+        if (audience instanceof ActorAudience) {
+            if (actor == null) {
+                return DeliverySummary.empty();
+            }
             if (canReceive(actor, actor, announcement)) {
                 if (send(actor, actor, announcement)) {
                     delivered++;
@@ -138,9 +122,24 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             } else {
                 skipped++;
             }
-        } else if (audienceType.equals("others") || audienceType.equals("exclude_actor")) {
+        } else if (audience instanceof PlayerAudience playerAudience) {
+            Player target = audienceProvider.findPlayer(playerAudience.playerId()).orElse(null);
+            if (target == null) {
+                return new DeliverySummary(0, 0, 1);
+            }
+            if (canReceive(target, actor, announcement)) {
+                if (send(target, actor, announcement)) {
+                    delivered++;
+                } else {
+                    invalid++;
+                }
+            } else {
+                skipped++;
+            }
+        } else if (audience instanceof OthersAudience) {
+            UUID actorUuid = actor != null ? actor.getUniqueId() : null;
             for (Player player : audienceProvider.onlinePlayers()) {
-                if (player.getUniqueId().equals(actor.getUniqueId())) {
+                if (actorUuid != null && player.getUniqueId().equals(actorUuid)) {
                     skipped++;
                     continue;
                 }
@@ -155,6 +154,7 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
                 }
             }
         } else {
+            // Default to ALL (AllAudience)
             for (Player player : audienceProvider.onlinePlayers()) {
                 if (canReceive(player, actor, announcement)) {
                     if (send(player, actor, announcement)) {
@@ -167,6 +167,7 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
                 }
             }
         }
+
         return new DeliverySummary(delivered, skipped, invalid);
     }
 
@@ -409,10 +410,10 @@ public final class SpigotAnnouncementDispatcher implements AnnouncementDispatche
             values.put("actor_world", actor.getWorld().getName());
         }
         
-        values.put("server_name", Bukkit.getServer().getName().toLowerCase(Locale.ROOT));
+        values.put("server_name", audienceProvider.serverName().toLowerCase(Locale.ROOT));
         values.put("server_group", serverGroups.stream().sorted().collect(Collectors.joining(",")));
-        values.put("online_players", Integer.toString(Bukkit.getOnlinePlayers().size()));
-        values.put("max_players", Integer.toString(Bukkit.getMaxPlayers()));
+        values.put("online_players", Integer.toString(audienceProvider.onlinePlayersCount()));
+        values.put("max_players", Integer.toString(audienceProvider.maxPlayers()));
         values.put("announcement_id", announcement.id().value());
         values.put("announcement_name", announcement.name());
         
