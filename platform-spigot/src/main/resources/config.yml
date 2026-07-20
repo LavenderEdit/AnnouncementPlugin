@@ -63,3 +63,7 @@ defaults:
   priority: 0
   channels:
     - CHAT
+
+events:
+  join:
+    delay: "PT0.5S"

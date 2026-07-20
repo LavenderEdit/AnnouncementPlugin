@@ -38,13 +38,13 @@ From the project root:
 The plugin artifact is produced at:
 
 ```text
-platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar
+platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar
 ```
 
 ## Installation
 
 1. Build the project or use the generated `.jar`.
-2. Copy `platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar` into your server `plugins/` folder.
+2. Copy `platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar` into your server `plugins/` folder.
 3. Start the server.
 4. Verify that `plugins/AdvancedAnnouncer/` is created.
 5. Run `/announcer version` and `/announcer debug`.
@@ -190,7 +190,7 @@ DiscordSRV is a `softdepend`: the plugin still starts when DiscordSRV is not ins
 ## Minecraft Smoke Test Guide
 
 1. Run `.\gradlew.bat :platform-spigot:build`.
-2. Copy `platform-spigot/build/libs/AdvancedAnnouncer-0.1.0-SNAPSHOT.jar` into `plugins/`.
+2. Copy `platform-spigot/build/libs/AdvancedAnnouncer-0.1.5-SNAPSHOT.jar` into `plugins/`.
 3. Start Paper 1.21.x.
 4. Join as an operator.
 5. Run `/announcer version`.

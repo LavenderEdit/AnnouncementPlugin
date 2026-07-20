@@ -2,8 +2,11 @@ name: AdvancedAnnouncer
 main: dev.studio.announcer.spigot.bootstrap.AdvancedAnnouncerPlugin
 version: ${version}
 api-version: '1.21'
-author: Lavender
+authors:
+  - Juan S Pimentel Lalangui
+  - Bryan A Vidal Crispin
 description: Modern multi-channel announcement engine for Paper, Spigot, and Folia-ready deployments.
+website: https://github.com/StudiosTKOH
 
 commands:
   announcer:

@@ -50,8 +50,14 @@ public final class LettuceRedisPubSubClient implements RedisPubSubClient {
 
     @Override
     public void close() {
-        subscriber.close();
-        publisher.close();
-        client.shutdown();
+        try {
+            subscriber.close();
+        } finally {
+            try {
+                publisher.close();
+            } finally {
+                client.shutdown();
+            }
+        }
     }
 }

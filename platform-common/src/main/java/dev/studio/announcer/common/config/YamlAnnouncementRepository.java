@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ public final class YamlAnnouncementRepository implements AnnouncementRepository 
     private static final String DEFAULT_FILE = "global.yml";
 
     private final Path announcementsDirectory;
-    private final Map<AnnouncementId, StoredAnnouncement> announcements = new ConcurrentHashMap<>();
+    private volatile Map<AnnouncementId, StoredAnnouncement> announcements = new ConcurrentHashMap<>();
 
     public YamlAnnouncementRepository(Path announcementsDirectory) {
         this.announcementsDirectory = announcementsDirectory;
@@ -27,17 +28,15 @@ public final class YamlAnnouncementRepository implements AnnouncementRepository 
     }
 
     public synchronized void reload() {
-        announcements.clear();
-        announcements.putAll(loadAll());
+        announcements = new ConcurrentHashMap<>(loadAll());
     }
 
     synchronized void replaceWith(YamlAnnouncementRepository other) {
-        announcements.clear();
-        announcements.putAll(other.announcements);
+        announcements = new ConcurrentHashMap<>(other.announcements);
     }
 
     private Map<AnnouncementId, StoredAnnouncement> loadAll() {
-        Map<AnnouncementId, StoredAnnouncement> loaded = new ConcurrentHashMap<>();
+        Map<AnnouncementId, StoredAnnouncement> loaded = new HashMap<>();
         try {
             Files.createDirectories(announcementsDirectory);
             try (var files = Files.list(announcementsDirectory)) {

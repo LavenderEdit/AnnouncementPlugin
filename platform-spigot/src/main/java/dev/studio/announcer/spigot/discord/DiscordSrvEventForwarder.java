@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 public final class DiscordSrvEventForwarder implements AutoCloseable {
     private final DiscordSrvBridgeService bridgeService;
-    private boolean registered;
+    private volatile boolean registered;
 
     public DiscordSrvEventForwarder(DiscordSrvBridgeService bridgeService) {
         this.bridgeService = Objects.requireNonNull(bridgeService, "bridgeService");

@@ -6,6 +6,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 public final class AnnouncementListMenu {
     private static final int PAGE_SIZE = 45;
@@ -13,8 +14,13 @@ public final class AnnouncementListMenu {
     public void open(Player player, EditorSession session, int page) {
         int safePage = Math.max(0, page);
         EditorMenuHolder holder = new EditorMenuHolder(session, EditorMenuType.LIST, null, safePage);
-        Inventory inventory = Bukkit.createInventory(holder, 54, "AdvancedAnnouncer - Anuncios");
+        int totalPages = Math.max(1, (int) Math.ceil((double) session.drafts().size() / PAGE_SIZE));
+        String title = "Anuncios  [" + (safePage + 1) + "/" + totalPages + "]";
+        Inventory inventory = Bukkit.createInventory(holder, 54, title);
         holder.attach(inventory);
+
+        ItemStack[] contents = inventory.getContents();
+        MenuItems.fillBorder(contents, Material.GRAY_STAINED_GLASS_PANE);
 
         List<Announcement> announcements = session.drafts();
         int start = safePage * PAGE_SIZE;
@@ -23,18 +29,21 @@ public final class AnnouncementListMenu {
             Announcement announcement = announcements.get(index);
             int slot = index - start;
             holder.mapAnnouncement(slot, announcement.id());
-            inventory.setItem(slot, announcementItem(announcement));
+            contents[slot] = announcementItem(announcement);
         }
 
         if (safePage > 0) {
-            inventory.setItem(45, MenuItems.item(Material.ARROW, "Anterior"));
+            contents[45] = MenuItems.item(Material.ARROW, "Anterior");
         }
-        inventory.setItem(47, MenuItems.item(Material.EMERALD, "Crear", List.of("Crea un anuncio chat basico.")));
-        inventory.setItem(49, MenuItems.item(Material.OAK_SIGN, "Volver"));
+        contents[47] = MenuItems.glowing(Material.EMERALD, "Crear",
+                List.of("Crea un anuncio chat basico."));
+        contents[49] = MenuItems.item(Material.OAK_SIGN, "Volver");
         if (end < announcements.size()) {
-            inventory.setItem(53, MenuItems.item(Material.ARROW, "Siguiente"));
+            contents[53] = MenuItems.item(Material.ARROW, "Siguiente");
         }
 
+        MenuItems.fillNavigationRow(contents, PAGE_SIZE);
+        inventory.setContents(contents);
         player.openInventory(inventory);
     }
 

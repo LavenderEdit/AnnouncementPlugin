@@ -8,6 +8,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class InMemoryAvatarCacheStore implements AvatarCacheStore {
+    private static final int MAX_ENTRIES = 5000;
     private final Map<UUID, AvatarResult> results = new ConcurrentHashMap<>();
 
     @Override
@@ -18,6 +19,9 @@ public final class InMemoryAvatarCacheStore implements AvatarCacheStore {
     @Override
     public CompletableFuture<Void> save(AvatarResult result) {
         if (result != null && result.playerId() != null && result.texture().isPresent()) {
+            if (results.size() >= MAX_ENTRIES) {
+                results.clear();
+            }
             results.put(result.playerId(), result);
         }
         return CompletableFuture.completedFuture(null);

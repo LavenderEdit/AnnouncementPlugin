@@ -1,11 +1,97 @@
 announcements:
   welcome:
-    name: Welcome
+    name: "Bienvenida Global"
     enabled: true
     type: GLOBAL
     channels:
       - CHAT
+      - TITLE
+      - ACTIONBAR
+      - SOUND
     messages:
-      - "<green>Welcome to the server, {player_name}!</green>"
-    priority: 0
-    interval: PT5M
+      - ""
+      - "<center><gradient:#00d2ff:#3a7bd5:#7b2ff7><strikethrough>                                    </strikethrough></gradient></center>"
+      - "<center><bold><gradient:#f12711:#f5af19:#f5af19>  ¡BIENVENIDO AL SERVIDOR!  </gradient></bold></center>"
+      - ""
+      - "<center><gray>  Hola </gray><white><bold>{player_name}</bold></white><gray>, nos alegra tenerte aquí</gray></center>"
+      - "<center><gray>  Disfruta de tu estancia y</gray> <gradient:#00d2ff:#3a7bd5><bold>diviértete</bold></gradient></center>"
+      - ""
+      - "<center><gradient:#00d2ff:#3a7bd5:#7b2ff7><strikethrough>                                    </strikethrough></gradient></center>"
+      - ""
+    title:
+      title: "<bold><gradient:#f12711:#f5af19:#f5af19>¡BIENVENIDO!</gradient></bold>"
+      subtitle: "<gray>Disfruta tu estancia, </gray><white><bold>{player_name}</bold></white>"
+      fade-in: "PT0.5S"
+      stay: "PT4S"
+      fade-out: "PT1S"
+    actionbar:
+      message: "<gradient:#00d2ff:#3a7bd5:#7b2ff7>✦ </gradient><white>{player_name}</white><gradient:#7b2ff7:#3a7bd5:#00d2ff> acaba de entrar al servidor ✦</gradient>"
+      duration: "PT4S"
+    sound:
+      key: "minecraft:entity.player.levelup"
+      volume: 1.0
+      pitch: 1.2
+    priority: 10
+    interval: PT10M
+
+  rules:
+    name: "Reglas del Servidor"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - ACTIONBAR
+    messages:
+      - ""
+      - "<center><gradient:#ff6b6b:#ee5a24><bold>  REGLAS DEL SERVIDOR  </bold></gradient></center>"
+      - ""
+      - "<center><gray>  1. Respeta a todos los jugadores</gray></center>"
+      - "<center><gray>  2. No hacer spam ni publicidad</gray></center>"
+      - "<center><gray>  3. Usa el chat en español</gray></center>"
+      - "<center><gray>  4. Diviértete responsablemente</gray></center>"
+      - ""
+      - "<center><gradient:#ff6b6b:#ee5a24><strikethrough>                        </strikethrough></gradient></center>"
+      - ""
+    actionbar:
+      message: "<gradient:#ff6b6b:#ee5a24>⚠ Lee las reglas en </gradient><white><bold>/reglas</bold></white>"
+      duration: "PT5S"
+    priority: 5
+    interval: PT15M
+
+  tips:
+    name: "Consejos del Servidor"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - ACTIONBAR
+    messages:
+      - ""
+      - "<center><gradient:#00d2ff:#3a7bd5><bold>  CONSEJO  </bold></gradient></center>"
+      - "<center><gray>  Usa </gray><white><bold>/help</bold></white><gray> para ver todos los comandos disponibles</gray></center>"
+      - ""
+    actionbar:
+      message: "<gradient:#00d2ff:#3a7bd5>💡 Tip: </gradient><white>Usa /help para ver comandos</white>"
+      duration: "PT4S"
+    priority: 3
+    interval: PT8M
+
+  staff:
+    name: "Staff en Línea"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - BOSSBAR
+    messages:
+      - ""
+      - "<center><gradient:#9b59b6:#8e44ad><bold>  STAFF EN LÍNEA  </bold></gradient></center>"
+      - "<center><gray>  Si necesitas ayuda, busca un moderador</gray></center>"
+      - ""
+    bossbar:
+      message: "<gradient:#9b59b6:#8e44ad>👑 Staff en línea - Si necesitas ayuda, busca un moderador</gradient>"
+      color: PURPLE
+      overlay: PROGRESS
+      duration: "PT8S"
+    priority: 4
+    interval: PT20M

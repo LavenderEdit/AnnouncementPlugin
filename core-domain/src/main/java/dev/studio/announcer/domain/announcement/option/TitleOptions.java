@@ -10,8 +10,8 @@ public record TitleOptions(
         Duration fadeOut) {
 
     public TitleOptions {
-        title = title == null ? "" : title;
-        subtitle = subtitle == null ? "" : subtitle;
+        title = title == null ? "" : title.trim();
+        subtitle = subtitle == null ? "" : subtitle.trim();
         if (title.isBlank() && subtitle.isBlank()) {
             throw new IllegalArgumentException("Title options require a title or subtitle.");
         }

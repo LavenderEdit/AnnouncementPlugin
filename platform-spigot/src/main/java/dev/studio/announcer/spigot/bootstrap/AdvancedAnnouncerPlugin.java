@@ -19,6 +19,8 @@ import dev.studio.announcer.application.usecase.PreviewAnnouncementUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
 import dev.studio.announcer.application.usecase.SendAnnouncementUseCase;
 import dev.studio.announcer.application.usecase.ValidateAnnouncementUseCase;
+import dev.studio.announcer.application.usecase.ExecuteTriggeredAnnouncementsUseCase;
+import dev.studio.announcer.application.usecase.TriggerMatcher;
 import dev.studio.announcer.common.avatar.CachedAvatarService;
 import dev.studio.announcer.common.avatar.InMemoryAvatarCacheStore;
 import dev.studio.announcer.common.config.ConfigBackupService;
@@ -52,6 +54,7 @@ import dev.studio.announcer.spigot.discord.DiscordSrvSettings;
 import dev.studio.announcer.spigot.gui.AnvilTextInputService;
 import dev.studio.announcer.spigot.gui.SpigotAnnouncementEditorService;
 import dev.studio.announcer.spigot.listener.NotificationCleanupListener;
+import dev.studio.announcer.spigot.listener.PlayerJoinAnnouncementListener;
 import dev.studio.announcer.spigot.placeholder.PlaceholderApiBridge;
 import dev.studio.announcer.spigot.placeholder.SpigotPlaceholderResolver;
 import dev.studio.announcer.spigot.scheduler.BukkitFoliaScheduler;
@@ -122,10 +125,11 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new SpigotProfileAvatarTextureSource());
         String serverId = getConfig().getString("server.id", getServer().getName().toLowerCase(java.util.Locale.ROOT));
         Set<String> serverGroups = stringSet(getConfig().getStringList("server.groups"));
+        SpigotAudienceProvider audienceProvider = new SpigotAudienceProvider();
         announcementDispatcher = new SpigotAnnouncementDispatcher(
                 audiences,
                 renderer,
-                new SpigotAudienceProvider(),
+                audienceProvider,
                 soundService,
                 actionBarService,
                 bossBarService,
@@ -177,13 +181,14 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new ConfigBackupService(configurationPaths.backupsDirectory()),
                 reloadService,
                 new LegacyWelcomeDonationsMigrator()));
+        AnvilTextInputService anvilInputService = new AnvilTextInputService(this, renderer, audienceProvider);
         announcementEditorService = new SpigotAnnouncementEditorService(
                 this,
                 announcementRepository,
                 announcementDispatcher,
                 scheduler,
                 reloadConfigurationUseCase,
-                new AnvilTextInputService(renderer));
+                anvilInputService);
         announcerCommandService = new AnnouncerCommandService(
                 announcementRepository,
                 announcementDispatcher,
@@ -193,14 +198,38 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 networkBroadcastService,
                 discordBridgeService);
 
+        Duration defaultJoinDelay = Duration.ZERO;
+        String rawJoinDelay = getConfig().getString("events.join.delay", "PT0.5S");
+        try {
+            defaultJoinDelay = Duration.parse(rawJoinDelay);
+        } catch (Exception e) {
+            getLogger().warning("Invalid default join delay format '" + rawJoinDelay + "', defaulting to 0s.");
+        }
+        ExecuteTriggeredAnnouncementsUseCase executeTriggeredAnnouncementsUseCase = new ExecuteTriggeredAnnouncementsUseCase(
+                announcementRepository,
+                announcementDispatcher,
+                scheduler,
+                new TriggerMatcher(serverId, serverGroups),
+                defaultJoinDelay);
+
         registerCommands();
         getServer().getPluginManager().registerEvents(
                 new NotificationCleanupListener(actionBarService, bossBarService),
                 this);
+        getServer().getPluginManager().registerEvents(anvilInputService, this);
+        getServer().getPluginManager().registerEvents(
+                new PlayerJoinAnnouncementListener(executeTriggeredAnnouncementsUseCase),
+                this);
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);
         }
-        getLogger().info("AdvancedAnnouncer enabled.");
+
+        int announcementCount = announcementRepository.findAll().size();
+        boolean redisEnabled = getConfig().getBoolean("redis.enabled", false);
+        boolean discordEnabled = getConfig().getBoolean("discord.enabled", false);
+        boolean foliaReady = scheduler instanceof dev.studio.announcer.spigot.scheduler.BukkitFoliaScheduler;
+        StartupBanner.printEnable(getLogger(), getDescription().getVersion(),
+                announcementCount, redisEnabled, discordEnabled, foliaReady);
     }
 
     @Override
@@ -240,7 +269,7 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
             audiences.close();
             audiences = null;
         }
-        getLogger().info("AdvancedAnnouncer disabled.");
+        StartupBanner.printDisable(getLogger(), getDescription().getVersion());
     }
 
     private void registerCommands() {

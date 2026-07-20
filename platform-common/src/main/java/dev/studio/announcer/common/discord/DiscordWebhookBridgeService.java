@@ -32,7 +32,14 @@ public final class DiscordWebhookBridgeService implements DiscordBridgeService {
         if (!enabled()) {
             return CompletableFuture.failedFuture(new IllegalStateException("Discord webhook is not configured."));
         }
-        HttpRequest request = HttpRequest.newBuilder(URI.create(settings.webhookUrl()))
+        URI webhookUri;
+        try {
+            webhookUri = URI.create(settings.webhookUrl());
+        } catch (IllegalArgumentException ex) {
+            return CompletableFuture.failedFuture(new IllegalStateException(
+                    "Discord webhook URL is malformed: " + ex.getMessage()));
+        }
+        HttpRequest request = HttpRequest.newBuilder(webhookUri)
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(payloadFactory.payload(message, settings)))
                 .build();

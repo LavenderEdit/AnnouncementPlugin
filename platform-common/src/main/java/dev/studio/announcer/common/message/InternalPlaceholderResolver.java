@@ -26,15 +26,26 @@ public final class InternalPlaceholderResolver implements PlaceholderResolver {
             return "";
         }
         PlaceholderContext safeContext = context == null ? PlaceholderContext.empty() : context;
-        String resolved = input.replace("%newline%", System.lineSeparator());
+        String resolved = input.replace("%newline%", System.lineSeparator())
+                               .replace("{newline}", System.lineSeparator());
+        
+        String timeStr = LocalTime.now(clock).format(DateTimeFormatter.ISO_LOCAL_TIME);
+        String dateStr = LocalDate.now(clock).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        
         resolved = resolved
-                .replace("%time%", LocalTime.now(clock).format(DateTimeFormatter.ISO_LOCAL_TIME))
-                .replace("%date%", LocalDate.now(clock).format(DateTimeFormatter.ISO_LOCAL_DATE));
+                .replace("%time%", timeStr)
+                .replace("{time}", timeStr)
+                .replace("%date%", dateStr)
+                .replace("{date}", dateStr);
+        
         if (safeContext.value("player_displayname").isEmpty()) {
-            resolved = resolved.replace("%player_displayname%", safeContext.value("player_name").orElse(""));
+            String fallbackName = safeContext.value("player_name").orElse("");
+            resolved = resolved.replace("%player_displayname%", fallbackName)
+                               .replace("{player_displayname}", fallbackName);
         }
         for (Map.Entry<String, String> entry : safeContext.values().entrySet()) {
-            resolved = resolved.replace("%" + entry.getKey() + "%", entry.getValue());
+            resolved = resolved.replace("%" + entry.getKey() + "%", entry.getValue())
+                               .replace("{" + entry.getKey() + "}", entry.getValue());
         }
         return resolved;
     }

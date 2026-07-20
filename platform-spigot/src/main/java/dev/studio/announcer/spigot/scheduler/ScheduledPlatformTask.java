@@ -6,7 +6,7 @@ import java.util.Objects;
 public final class ScheduledPlatformTask implements ScheduledTask {
     private final String id;
     private final Runnable cancelAction;
-    private boolean cancelled;
+    private volatile boolean cancelled;
 
     public ScheduledPlatformTask(String id, Runnable cancelAction) {
         this.id = Objects.requireNonNull(id, "id");

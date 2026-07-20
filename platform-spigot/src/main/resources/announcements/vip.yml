@@ -1,1 +1,106 @@
-announcements: {}
+announcements:
+  vip_welcome:
+    name: "Bienvenida VIP"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - TITLE
+      - ACTIONBAR
+      - SOUND
+      - BOSSBAR
+    messages:
+      - ""
+      - "<center><gradient:#ffd700:#ff6b35:#ff1744><strikethrough>                                          </strikethrough></gradient></center>"
+      - "<center><bold><gradient:#ffd700:#ff6b35:#ff1744>  ★ BIENVENIDO VIP ★  </gradient></bold></center>"
+      - ""
+      - "<center><gray>  ¡Hola </gray><gold><bold>{player_name}</bold></gold><gray>! Gracias por ser parte VIP</gray></center>"
+      - "<center><gold>  Disfruta de tus </gold><gradient:#ffd700:#ff6b35><bold>beneficios exclusivos</bold></gradient></center>"
+      - ""
+      - "<center><gradient:#ffd700:#ff6b35:#ff1744><strikethrough>                                          </strikethrough></gradient></center>"
+      - ""
+    title:
+      title: "<bold><gradient:#ffd700:#ff6b35:#ff1744>★ VIP ★</gradient></bold>"
+      subtitle: "<gold>¡Bienvenido, </gold><white><bold>{player_name}</bold></white><gold>!</gold>"
+      fade-in: "PT0.5S"
+      stay: "PT5S"
+      fade-out: "PT1.5S"
+    actionbar:
+      message: "<gradient:#ffd700:#ff6b35:#ff1744>✦ </gradient><gold><bold>{player_name}</bold></gold><gradient:#ff1744:#ff6b35:#ffd700> - Miembro VIP ✦</gradient>"
+      duration: "PT5S"
+    sound:
+      key: "minecraft:entity.player.levelup"
+      volume: 1.0
+      pitch: 1.5
+    bossbar:
+      message: "<gradient:#ffd700:#ff6b35:#ff1744>👑 ¡Bienvenido VIP! Disfruta de tus beneficios exclusivos</gradient>"
+      color: YELLOW
+      overlay: PROGRESS
+      duration: "PT10S"
+    priority: 15
+    interval: PT15M
+
+  vip_perks:
+    name: "Beneficios VIP"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - ACTIONBAR
+    messages:
+      - ""
+      - "<center><gradient:#ffd700:#ff6b35><bold>  BENEFICIOS VIP  </bold></gradient></center>"
+      - ""
+      - "<center><gold>  ✦ </gold><gray>Acceso a comandos exclusivos</gray></center>"
+      - "<center><gold>  ✦ </gold><gray>Prioridad en colas</gray></center>"
+      - "<center><gold>  ✦ </gold><gray>Cosméticos especiales</gray></center>"
+      - "<center><gold>  ✦ </gold><gray>Y mucho más...</gray></center>"
+      - ""
+      - "<center><gradient:#ffd700:#ff6b35><strikethrough>                      </strikethrough></gradient></center>"
+      - ""
+    actionbar:
+      message: "<gradient:#ffd700:#ff6b35>👑 VIP: </gradient><white>Disfruta de tus beneficios exclusivos</white>"
+      duration: "PT5S"
+    priority: 8
+    interval: PT25M
+
+  vip_rank_up:
+    name: "Promoción VIP"
+    enabled: true
+    type: GLOBAL
+    channels:
+      - CHAT
+      - TITLE
+      - ACTIONBAR
+      - SOUND
+      - BOSSBAR
+    messages:
+      - ""
+      - "<center><gradient:#ffd700:#ff1744:#9b59b6><strikethrough>                                          </strikethrough></gradient></center>"
+      - "<center><bold><gradient:#ffd700:#ff1744:#9b59b6>  🎉 ¡PROMOCIÓN VIP! 🎉  </gradient></bold></center>"
+      - ""
+      - "<center><gray>  </gray><white><bold>{player_name}</bold></white><gray> acaba de ser promovido a VIP</gray></center>"
+      - "<center><gold>  ¡Felicidades y bienvenido al equipo!</gold></center>"
+      - ""
+      - "<center><gradient:#ffd700:#ff1744:#9b59b6><strikethrough>                                          </strikethrough></gradient></center>"
+      - ""
+    title:
+      title: "<bold><gradient:#ffd700:#ff1744:#9b59b6>🎉 VIP 🎉</gradient></bold>"
+      subtitle: "<gold>¡</gold><white><bold>{player_name}</bold></white><gold> ha sido promovido!</gold>"
+      fade-in: "PT0.5S"
+      stay: "PT6S"
+      fade-out: "PT2S"
+    actionbar:
+      message: "<gradient:#ffd700:#ff1744:#9b59b6>🎉 </gradient><white><bold>{player_name}</bold></white><gradient:#9b59b6:#ff1744:#ffd700> ahora es VIP 🎉</gradient>"
+      duration: "PT6S"
+    sound:
+      key: "minecraft:ui.player.levelup"
+      volume: 1.0
+      pitch: 1.0
+    bossbar:
+      message: "<gradient:#ffd700:#ff1744:#9b59b6>🎉 ¡{player_name} ha sido promovido a VIP! 🎉</gradient>"
+      color: YELLOW
+      overlay: PROGRESS
+      duration: "PT12S"
+    priority: 20
+    interval: PT30M

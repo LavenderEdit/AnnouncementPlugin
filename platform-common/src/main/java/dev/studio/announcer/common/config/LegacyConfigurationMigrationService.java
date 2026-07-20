@@ -63,7 +63,7 @@ public final class LegacyConfigurationMigrationService implements LegacyMigratio
         } catch (RuntimeException ex) {
             return ConfigurationReloadResult.failure(
                     "Legacy migration failed.",
-                    List.of(ex.getMessage()));
+                    List.of(ex.getMessage() != null ? ex.getMessage() : ex.getClass().getName()));
         }
     }
 }
