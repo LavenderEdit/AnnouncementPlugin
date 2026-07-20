@@ -56,16 +56,15 @@ public final class AnvilTextInputService implements Listener {
     }
 
     public void openRenameAnvil(Player player, AnnouncementId announcementId, String currentName, Consumer<String> callback) {
-        String title = "Renombrar anuncio";
-        Inventory anvil = audienceProvider.createAnvilInventory(player, title);
-        
-        ItemStack paper = audienceProvider.createAnvilItem(currentName);
-        if (paper != null) {
-            anvil.setItem(0, paper);
-        }
+        player.closeInventory();
+        player.sendMessage(Component.text(""));
+        player.sendMessage(Component.text("=== RENOMBRAR ANUNCIO ===").color(NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("Nombre actual: " + currentName).color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("Escribe el nuevo nombre en el chat y presiona Enter.").color(NamedTextColor.GRAY));
+        player.sendMessage(Component.text("Escribe 'cancelar' para volver sin realizar cambios.").color(NamedTextColor.RED));
+        player.sendMessage(Component.text(""));
 
-        pendingAnvilInputs.put(player.getUniqueId(), new PendingInput(currentName, callback));
-        player.openInventory(anvil);
+        pendingChatInputs.put(player.getUniqueId(), new PendingInput(currentName, callback));
     }
 
     public void openMessageEditAnvil(Player player, AnnouncementId announcementId, int messageIndex,
