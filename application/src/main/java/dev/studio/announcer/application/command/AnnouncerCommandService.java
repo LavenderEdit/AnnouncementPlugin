@@ -3,6 +3,7 @@ package dev.studio.announcer.application.command;
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.discord.DiscordOutboundMessage;
 import dev.studio.announcer.api.service.AnnouncementRepository;
+import dev.studio.announcer.api.service.AnnouncementSchedulerService;
 import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
 import dev.studio.announcer.api.service.DiscordBridgeService;
@@ -28,6 +29,7 @@ public final class AnnouncerCommandService {
     private final AnnouncementRepository repository;
     private final AnnouncementDispatcher dispatcher;
     private final PlatformStatusService statusService;
+    private final AnnouncementSchedulerService schedulerService;
     private final ReloadConfigurationUseCase reloadConfigurationUseCase;
     private final MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase;
     private final NetworkBroadcastService networkBroadcastService;
@@ -41,23 +43,34 @@ public final class AnnouncerCommandService {
                 repository,
                 dispatcher,
                 statusService,
-                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")),
-                new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
-                        "Legacy migration service is not configured.",
-                        List.of("No platform migration service was provided."))),
-                new DisabledNetworkBroadcastService(),
-                new DisabledDiscordBridgeService());
+                new NoOpSchedulerService(),
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")));
     }
 
     public AnnouncerCommandService(
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
+            AnnouncementSchedulerService schedulerService) {
+        this(
+                repository,
+                dispatcher,
+                statusService,
+                schedulerService,
+                new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")));
+    }
+
+    public AnnouncerCommandService(
+            AnnouncementRepository repository,
+            AnnouncementDispatcher dispatcher,
+            PlatformStatusService statusService,
+            AnnouncementSchedulerService schedulerService,
             ReloadConfigurationUseCase reloadConfigurationUseCase) {
         this(
                 repository,
                 dispatcher,
                 statusService,
+                schedulerService,
                 reloadConfigurationUseCase,
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
                         "Legacy migration service is not configured.",
@@ -70,12 +83,14 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
+            AnnouncementSchedulerService schedulerService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase) {
         this(
                 repository,
                 dispatcher,
                 statusService,
+                schedulerService,
                 reloadConfigurationUseCase,
                 migrateLegacyConfigurationUseCase,
                 new DisabledNetworkBroadcastService(),
@@ -86,6 +101,7 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
+            AnnouncementSchedulerService schedulerService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase,
             NetworkBroadcastService networkBroadcastService,
@@ -93,6 +109,7 @@ public final class AnnouncerCommandService {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.statusService = Objects.requireNonNull(statusService, "statusService");
+        this.schedulerService = Objects.requireNonNull(schedulerService, "schedulerService");
         this.reloadConfigurationUseCase = Objects.requireNonNull(reloadConfigurationUseCase, "reloadConfigurationUseCase");
         this.migrateLegacyConfigurationUseCase = Objects.requireNonNull(
                 migrateLegacyConfigurationUseCase,
@@ -162,6 +179,7 @@ public final class AnnouncerCommandService {
                 .messages(List.of("<green>Announcement " + id.value() + "</green>"))
                 .build();
         repository.save(announcement);
+        schedulerService.schedule(announcement);
         return CommandOutcome.success("Created announcement '" + id.value() + "'.");
     }
 
@@ -171,6 +189,7 @@ public final class AnnouncerCommandService {
         if (!repository.deleteById(id)) {
             return CommandOutcome.error("Announcement not found: " + id.value());
         }
+        schedulerService.cancel(id);
         return CommandOutcome.success("Deleted announcement '" + id.value() + "'.");
     }
 
@@ -181,6 +200,11 @@ public final class AnnouncerCommandService {
                 .orElseThrow(() -> new AnnouncementNotFoundException(id));
         Announcement updated = current.withEnabled(!current.enabled());
         repository.save(updated);
+        if (updated.enabled() && updated.interval().isPresent()) {
+            schedulerService.schedule(updated);
+        } else {
+            schedulerService.cancel(id);
+        }
         return CommandOutcome.success("Announcement '" + id.value() + "' "
                 + (updated.enabled() ? "enabled" : "disabled") + ".");
     }
@@ -345,5 +369,24 @@ public final class AnnouncerCommandService {
         @Override
         public void close() {
         }
+    }
+
+    private static final class NoOpSchedulerService implements AnnouncementSchedulerService {
+        @Override
+        public void reschedule(java.util.Collection<Announcement> announcements) {}
+
+        @Override
+        public void schedule(Announcement announcement) {}
+
+        @Override
+        public void cancel(dev.studio.announcer.domain.announcement.AnnouncementId announcementId) {}
+
+        @Override
+        public boolean isScheduled(dev.studio.announcer.domain.announcement.AnnouncementId announcementId) {
+            return false;
+        }
+
+        @Override
+        public void stop() {}
     }
 }

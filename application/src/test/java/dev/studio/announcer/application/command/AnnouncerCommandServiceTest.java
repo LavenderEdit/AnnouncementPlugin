@@ -85,6 +85,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
+                new NoOpScheduler(),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated.")),
                 new FakeNetwork(true),
@@ -102,6 +103,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
+                new NoOpScheduler(),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded 3 announcement(s).")));
 
         assertEquals(CommandOutcome.success("Reloaded 3 announcement(s)."),
@@ -114,6 +116,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
+                new NoOpScheduler(),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated 2 announcement(s).")));
 
@@ -122,7 +125,15 @@ class AnnouncerCommandServiceTest {
     }
 
     private static AnnouncerCommandService service(FakeRepository repository, FakeDispatcher dispatcher) {
-        return new AnnouncerCommandService(repository, dispatcher, new FakeStatus());
+        return new AnnouncerCommandService(repository, dispatcher, new FakeStatus(), new NoOpScheduler());
+    }
+
+    private static final class NoOpScheduler implements dev.studio.announcer.api.service.AnnouncementSchedulerService {
+        @Override public void reschedule(java.util.Collection<dev.studio.announcer.domain.announcement.Announcement> a) {}
+        @Override public void schedule(dev.studio.announcer.domain.announcement.Announcement a) {}
+        @Override public void cancel(dev.studio.announcer.domain.announcement.AnnouncementId id) {}
+        @Override public boolean isScheduled(dev.studio.announcer.domain.announcement.AnnouncementId id) { return false; }
+        @Override public void stop() {}
     }
 
     private static Announcement sample(String id) {

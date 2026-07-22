@@ -190,12 +190,14 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 announcementRepository,
                 announcementDispatcher,
                 scheduler,
+                announcementSchedulerService,
                 reloadConfigurationUseCase,
                 anvilInputService);
         announcerCommandService = new AnnouncerCommandService(
                 announcementRepository,
                 announcementDispatcher,
                 platformStatusService,
+                announcementSchedulerService,
                 reloadConfigurationUseCase,
                 migrateLegacyConfigurationUseCase,
                 networkBroadcastService,

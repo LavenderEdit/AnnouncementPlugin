@@ -35,12 +35,11 @@ public final class DefaultAnnouncementSchedulerService implements AnnouncementSc
     }
 
     @Override
-    public synchronized void stop() {
-        registrations.values().forEach(SchedulerRegistration::cancel);
-        registrations.clear();
-    }
-
-    private void schedule(Announcement announcement) {
+    public synchronized void schedule(Announcement announcement) {
+        if (announcement == null || !announcement.enabled() || announcement.interval().isEmpty()) {
+            return;
+        }
+        cancel(announcement.id());
         Duration interval = announcement.interval().orElseThrow();
         ScheduledTask task = scheduler.scheduleRepeating(
                 taskId(announcement),
@@ -48,6 +47,28 @@ public final class DefaultAnnouncementSchedulerService implements AnnouncementSc
                 interval,
                 () -> dispatcher.broadcast(announcement));
         registrations.put(announcement.id(), new SchedulerRegistration(announcement.id(), task));
+    }
+
+    @Override
+    public synchronized void cancel(AnnouncementId announcementId) {
+        if (announcementId == null) {
+            return;
+        }
+        SchedulerRegistration existing = registrations.remove(announcementId);
+        if (existing != null) {
+            existing.cancel();
+        }
+    }
+
+    @Override
+    public synchronized boolean isScheduled(AnnouncementId announcementId) {
+        return announcementId != null && registrations.containsKey(announcementId);
+    }
+
+    @Override
+    public synchronized void stop() {
+        registrations.values().forEach(SchedulerRegistration::cancel);
+        registrations.clear();
     }
 
     private String taskId(Announcement announcement) {
