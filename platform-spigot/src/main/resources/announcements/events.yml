@@ -65,13 +65,13 @@ announcements:
     messages:
       - ""
       - "<center><gradient:#9b59b6:#8e44ad><strikethrough>                                    </strikethrough></gradient></center>"
-      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha muerto</gray></center>"
-      - "<center><gray>  ¡Descanse en paz!</gray></center>"
+      - "<center><gray>  </gray><white><bold>{victim_name}</bold></white><gray> ha muerto</gray></center>"
+      - "<center><gray>  Causa: </gray><light_purple><bold>{death_cause}</bold></light_purple></center>"
       - ""
       - "<center><gradient:#9b59b6:#8e44ad><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     actionbar:
-      message: "<gradient:#9b59b6:#8e44ad>💀 </gradient><white>{actor_name}</white><gradient:#8e44ad:#9b59b6> ha muerto</gradient>"
+      message: "<gradient:#9b59b6:#8e44ad>💀 </gradient><white>{victim_name}</white><gradient:#8e44ad:#9b59b6> ha muerto por {death_cause}</gradient>"
       duration: "PT3S"
     priority: 6
 

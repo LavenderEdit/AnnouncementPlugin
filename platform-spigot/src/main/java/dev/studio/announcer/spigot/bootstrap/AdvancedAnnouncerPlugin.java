@@ -54,6 +54,7 @@ import dev.studio.announcer.spigot.discord.DiscordSrvSettings;
 import dev.studio.announcer.spigot.gui.AnvilTextInputService;
 import dev.studio.announcer.spigot.gui.SpigotAnnouncementEditorService;
 import dev.studio.announcer.spigot.listener.NotificationCleanupListener;
+import dev.studio.announcer.spigot.listener.PlayerDeathAnnouncementListener;
 import dev.studio.announcer.spigot.listener.PlayerJoinAnnouncementListener;
 import dev.studio.announcer.spigot.listener.PlayerWorldChangeAnnouncementListener;
 import dev.studio.announcer.spigot.placeholder.PlaceholderApiBridge;
@@ -227,6 +228,13 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 new TriggerMatcher(serverId, serverGroups),
                 "world-change-delay",
                 defaultWorldChangeDelay);
+        ExecuteTriggeredAnnouncementsUseCase executeDeathUseCase = new ExecuteTriggeredAnnouncementsUseCase(
+                announcementRepository,
+                announcementDispatcher,
+                scheduler,
+                new TriggerMatcher(serverId, serverGroups),
+                "death-delay",
+                Duration.ZERO);
 
         registerCommands();
         getServer().getPluginManager().registerEvents(
@@ -238,6 +246,9 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 this);
         getServer().getPluginManager().registerEvents(
                 new PlayerWorldChangeAnnouncementListener(executeWorldChangeUseCase),
+                this);
+        getServer().getPluginManager().registerEvents(
+                new PlayerDeathAnnouncementListener(executeDeathUseCase),
                 this);
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);
