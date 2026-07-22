@@ -16,6 +16,7 @@ public final class PlayerJoinAnnouncementListener implements Listener {
         this.useCase = Objects.requireNonNull(useCase, "useCase");
     }
 
+    @SuppressWarnings("deprecation")
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         String actorId = event.getPlayer().getUniqueId().toString();
