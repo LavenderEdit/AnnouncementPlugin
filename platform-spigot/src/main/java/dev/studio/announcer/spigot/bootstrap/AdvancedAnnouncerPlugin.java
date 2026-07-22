@@ -3,6 +3,7 @@ package dev.studio.announcer.spigot.bootstrap;
 import dev.studio.announcer.api.service.AvatarService;
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementEditorService;
+import dev.studio.announcer.api.service.AnnouncementManagementService;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.AnnouncementSchedulerService;
 import dev.studio.announcer.api.service.DiscordBridgeService;
@@ -11,6 +12,7 @@ import dev.studio.announcer.api.service.SchedulerPort;
 import dev.studio.announcer.api.service.SoundService;
 import dev.studio.announcer.api.service.ToastNotificationService;
 import dev.studio.announcer.application.command.AnnouncerCommandService;
+import dev.studio.announcer.application.service.DefaultAnnouncementManagementService;
 import dev.studio.announcer.application.usecase.CreateAnnouncementUseCase;
 import dev.studio.announcer.application.usecase.HandleDiscordInboundUseCase;
 import dev.studio.announcer.application.usecase.HandleNetworkBroadcastUseCase;
@@ -166,6 +168,8 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 () -> discordBridgeService != null && discordBridgeService.enabled());
         announcementSchedulerService = new DefaultAnnouncementSchedulerService(scheduler, announcementDispatcher);
         announcementSchedulerService.reschedule(announcementRepository.findAll());
+        AnnouncementManagementService managementService = new DefaultAnnouncementManagementService(
+                announcementRepository, announcementSchedulerService);
         createAnnouncementUseCase = new CreateAnnouncementUseCase(announcementRepository);
         sendAnnouncementUseCase = new SendAnnouncementUseCase(announcementRepository, announcementDispatcher);
         previewAnnouncementUseCase = new PreviewAnnouncementUseCase(announcementRepository, announcementDispatcher);
@@ -191,13 +195,14 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
                 announcementDispatcher,
                 scheduler,
                 announcementSchedulerService,
+                managementService,
                 reloadConfigurationUseCase,
                 anvilInputService);
         announcerCommandService = new AnnouncerCommandService(
                 announcementRepository,
                 announcementDispatcher,
                 platformStatusService,
-                announcementSchedulerService,
+                managementService,
                 reloadConfigurationUseCase,
                 migrateLegacyConfigurationUseCase,
                 networkBroadcastService,

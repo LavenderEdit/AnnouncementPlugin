@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
+import dev.studio.announcer.api.service.AnnouncementManagementResult;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
@@ -85,7 +86,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
-                new NoOpScheduler(),
+                new NoOpManagementService(new FakeRepository()),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated.")),
                 new FakeNetwork(true),
@@ -103,7 +104,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
-                new NoOpScheduler(),
+                new NoOpManagementService(new FakeRepository()),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded 3 announcement(s).")));
 
         assertEquals(CommandOutcome.success("Reloaded 3 announcement(s)."),
@@ -116,7 +117,7 @@ class AnnouncerCommandServiceTest {
                 new FakeRepository(),
                 new FakeDispatcher(),
                 new FakeStatus(),
-                new NoOpScheduler(),
+                new NoOpManagementService(new FakeRepository()),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reloaded.")),
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.success("Migrated 2 announcement(s).")));
 
@@ -125,15 +126,40 @@ class AnnouncerCommandServiceTest {
     }
 
     private static AnnouncerCommandService service(FakeRepository repository, FakeDispatcher dispatcher) {
-        return new AnnouncerCommandService(repository, dispatcher, new FakeStatus(), new NoOpScheduler());
+        return new AnnouncerCommandService(repository, dispatcher, new FakeStatus(), new NoOpManagementService(repository));
     }
 
-    private static final class NoOpScheduler implements dev.studio.announcer.api.service.AnnouncementSchedulerService {
-        @Override public void reschedule(java.util.Collection<dev.studio.announcer.domain.announcement.Announcement> a) {}
-        @Override public void schedule(dev.studio.announcer.domain.announcement.Announcement a) {}
-        @Override public void cancel(dev.studio.announcer.domain.announcement.AnnouncementId id) {}
-        @Override public boolean isScheduled(dev.studio.announcer.domain.announcement.AnnouncementId id) { return false; }
-        @Override public void stop() {}
+    private static final class NoOpManagementService implements dev.studio.announcer.api.service.AnnouncementManagementService {
+        private final FakeRepository repository;
+
+        NoOpManagementService(FakeRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override public AnnouncementManagementResult create(dev.studio.announcer.domain.announcement.Announcement a) {
+            repository.save(a);
+            return AnnouncementManagementResult.success("Created announcement '" + a.id().value() + "'.");
+        }
+        @Override public AnnouncementManagementResult update(dev.studio.announcer.domain.announcement.Announcement a) {
+            repository.save(a);
+            return AnnouncementManagementResult.success("Updated announcement '" + a.id().value() + "'.");
+        }
+        @Override public AnnouncementManagementResult toggle(dev.studio.announcer.domain.announcement.AnnouncementId id) {
+            dev.studio.announcer.domain.announcement.Announcement current = repository.findById(id).orElse(null);
+            if (current == null) return AnnouncementManagementResult.failure("Announcement not found: " + id.value());
+            repository.save(current.withEnabled(!current.enabled()));
+            return AnnouncementManagementResult.success("Announcement '" + id.value() + "' " + (!current.enabled() ? "enabled" : "disabled") + ".");
+        }
+        @Override public AnnouncementManagementResult delete(dev.studio.announcer.domain.announcement.AnnouncementId id) {
+            repository.deleteById(id);
+            return AnnouncementManagementResult.success("Deleted announcement '" + id.value() + "'.");
+        }
+        @Override public AnnouncementManagementResult duplicate(dev.studio.announcer.domain.announcement.AnnouncementId s, dev.studio.announcer.domain.announcement.AnnouncementId t) {
+            return AnnouncementManagementResult.success("Duplicated");
+        }
+        @Override public AnnouncementManagementResult saveAll() { return AnnouncementManagementResult.success("Saved"); }
+        @Override public AnnouncementManagementResult validate(dev.studio.announcer.domain.announcement.Announcement a) { return AnnouncementManagementResult.success("Valid"); }
+        @Override public java.util.Optional<dev.studio.announcer.domain.announcement.Announcement> findById(dev.studio.announcer.domain.announcement.AnnouncementId id) { return repository.findById(id); }
     }
 
     private static Announcement sample(String id) {

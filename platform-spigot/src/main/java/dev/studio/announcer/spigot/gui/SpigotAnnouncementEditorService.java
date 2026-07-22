@@ -2,6 +2,8 @@ package dev.studio.announcer.spigot.gui;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.service.AnnouncementEditorService;
+import dev.studio.announcer.api.service.AnnouncementManagementResult;
+import dev.studio.announcer.api.service.AnnouncementManagementService;
 import dev.studio.announcer.api.service.AnnouncementRepository;
 import dev.studio.announcer.api.service.AnnouncementSchedulerService;
 import dev.studio.announcer.api.service.DeliverySummary;
@@ -32,6 +34,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
     private final AnnouncementDispatcher dispatcher;
     private final SchedulerPort scheduler;
     private final AnnouncementSchedulerService schedulerService;
+    private final AnnouncementManagementService managementService;
     private final ReloadConfigurationUseCase reloadConfigurationUseCase;
     private final AnvilTextInputService inputService;
     private final MainEditorMenu mainMenu = new MainEditorMenu();
@@ -50,6 +53,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
             AnnouncementDispatcher dispatcher,
             SchedulerPort scheduler,
             AnnouncementSchedulerService schedulerService,
+            AnnouncementManagementService managementService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             AnvilTextInputService inputService) {
         this.plugin = Objects.requireNonNull(plugin, "plugin");
@@ -57,6 +61,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.schedulerService = Objects.requireNonNull(schedulerService, "schedulerService");
+        this.managementService = Objects.requireNonNull(managementService, "managementService");
         this.reloadConfigurationUseCase = Objects.requireNonNull(reloadConfigurationUseCase, "reloadConfigurationUseCase");
         this.inputService = Objects.requireNonNull(inputService, "inputService");
     }
@@ -179,10 +184,8 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
         if (slot == 10) {
             holder.session().toggle(id);
             Announcement toggled = holder.session().draft(id).orElse(null);
-            if (toggled != null && toggled.enabled() && toggled.interval().isPresent()) {
-                schedulerService.schedule(toggled);
-            } else {
-                schedulerService.cancel(id);
+            if (toggled != null) {
+                managementService.update(toggled);
             }
             next(player, () -> detailMenu.open(player, holder.session(), id));
         } else if (slot == 11) {
@@ -215,7 +218,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
                 .orElseThrow(() -> new IllegalStateException("Delete menu missing announcement id."));
         if (slot == 11) {
             holder.session().delete(id);
-            schedulerService.cancel(id);
+            managementService.delete(id);
             player.sendMessage("Draft eliminado: " + id.value());
             next(player, () -> listMenu.open(player, holder.session(), 0));
         } else if (slot == 15) {
@@ -309,7 +312,7 @@ public final class SpigotAnnouncementEditorService implements AnnouncementEditor
     private void save(Player player, EditorSession session) {
         session.save();
         sessions.remove(player.getUniqueId());
-        schedulerService.reschedule(repository.findAll());
+        managementService.saveAll();
         var reload = reloadConfigurationUseCase.reload();
         if (reload.success()) {
             player.sendMessage("Cambios guardados y configuracion recargada.");

@@ -2,8 +2,9 @@ package dev.studio.announcer.application.command;
 
 import dev.studio.announcer.api.service.AnnouncementDispatcher;
 import dev.studio.announcer.api.discord.DiscordOutboundMessage;
+import dev.studio.announcer.api.service.AnnouncementManagementResult;
+import dev.studio.announcer.api.service.AnnouncementManagementService;
 import dev.studio.announcer.api.service.AnnouncementRepository;
-import dev.studio.announcer.api.service.AnnouncementSchedulerService;
 import dev.studio.announcer.api.service.ConfigurationReloadResult;
 import dev.studio.announcer.api.service.DeliverySummary;
 import dev.studio.announcer.api.service.DiscordBridgeService;
@@ -11,8 +12,6 @@ import dev.studio.announcer.api.service.NetworkBroadcastService;
 import dev.studio.announcer.api.service.PlatformStatusService;
 import dev.studio.announcer.application.usecase.MigrateLegacyConfigurationUseCase;
 import dev.studio.announcer.application.usecase.ReloadConfigurationUseCase;
-import dev.studio.announcer.application.usecase.AnnouncementNotFoundException;
-import dev.studio.announcer.application.usecase.AnnouncementValidationException;
 import dev.studio.announcer.domain.announcement.Announcement;
 import dev.studio.announcer.domain.announcement.AnnouncementChannel;
 import dev.studio.announcer.domain.announcement.AnnouncementId;
@@ -29,7 +28,7 @@ public final class AnnouncerCommandService {
     private final AnnouncementRepository repository;
     private final AnnouncementDispatcher dispatcher;
     private final PlatformStatusService statusService;
-    private final AnnouncementSchedulerService schedulerService;
+    private final AnnouncementManagementService managementService;
     private final ReloadConfigurationUseCase reloadConfigurationUseCase;
     private final MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase;
     private final NetworkBroadcastService networkBroadcastService;
@@ -43,7 +42,7 @@ public final class AnnouncerCommandService {
                 repository,
                 dispatcher,
                 statusService,
-                new NoOpSchedulerService(),
+                new NoOpManagementService(repository),
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")));
     }
 
@@ -51,12 +50,12 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
-            AnnouncementSchedulerService schedulerService) {
+            AnnouncementManagementService managementService) {
         this(
                 repository,
                 dispatcher,
                 statusService,
-                schedulerService,
+                managementService,
                 new ReloadConfigurationUseCase(() -> ConfigurationReloadResult.success("Reload completed.")));
     }
 
@@ -64,13 +63,13 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
-            AnnouncementSchedulerService schedulerService,
+            AnnouncementManagementService managementService,
             ReloadConfigurationUseCase reloadConfigurationUseCase) {
         this(
                 repository,
                 dispatcher,
                 statusService,
-                schedulerService,
+                managementService,
                 reloadConfigurationUseCase,
                 new MigrateLegacyConfigurationUseCase(() -> ConfigurationReloadResult.failure(
                         "Legacy migration service is not configured.",
@@ -83,14 +82,14 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
-            AnnouncementSchedulerService schedulerService,
+            AnnouncementManagementService managementService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase) {
         this(
                 repository,
                 dispatcher,
                 statusService,
-                schedulerService,
+                managementService,
                 reloadConfigurationUseCase,
                 migrateLegacyConfigurationUseCase,
                 new DisabledNetworkBroadcastService(),
@@ -101,7 +100,7 @@ public final class AnnouncerCommandService {
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             PlatformStatusService statusService,
-            AnnouncementSchedulerService schedulerService,
+            AnnouncementManagementService managementService,
             ReloadConfigurationUseCase reloadConfigurationUseCase,
             MigrateLegacyConfigurationUseCase migrateLegacyConfigurationUseCase,
             NetworkBroadcastService networkBroadcastService,
@@ -109,7 +108,7 @@ public final class AnnouncerCommandService {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.statusService = Objects.requireNonNull(statusService, "statusService");
-        this.schedulerService = Objects.requireNonNull(schedulerService, "schedulerService");
+        this.managementService = Objects.requireNonNull(managementService, "managementService");
         this.reloadConfigurationUseCase = Objects.requireNonNull(reloadConfigurationUseCase, "reloadConfigurationUseCase");
         this.migrateLegacyConfigurationUseCase = Objects.requireNonNull(
                 migrateLegacyConfigurationUseCase,
@@ -144,8 +143,7 @@ public final class AnnouncerCommandService {
                 case "editor" -> CommandOutcome.success("Opening editor...");
                 default -> help();
             };
-        } catch (IllegalArgumentException | AnnouncementNotFoundException
-                 | AnnouncementValidationException | IllegalStateException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             return CommandOutcome.error(ex.getMessage());
         }
     }
@@ -170,50 +168,34 @@ public final class AnnouncerCommandService {
     private CommandOutcome create(CommandRequest request) {
         requireArgs(request, 2, "Usage: /announcer create <id>");
         AnnouncementId id = AnnouncementId.of(request.argument(1));
-        if (repository.findById(id).isPresent()) {
-            return CommandOutcome.error("Announcement '" + id.value() + "' already exists.");
-        }
         Announcement announcement = Announcement.builder(id, id.value())
                 .type(AnnouncementType.GLOBAL)
                 .channels(EnumSet.of(AnnouncementChannel.CHAT))
                 .messages(List.of("<green>Announcement " + id.value() + "</green>"))
                 .build();
-        repository.save(announcement);
-        schedulerService.schedule(announcement);
-        return CommandOutcome.success("Created announcement '" + id.value() + "'.");
+        AnnouncementManagementResult result = managementService.create(announcement);
+        return toOutcome(result);
     }
 
     private CommandOutcome delete(CommandRequest request) {
         requireArgs(request, 2, "Usage: /announcer delete <id>");
         AnnouncementId id = AnnouncementId.of(request.argument(1));
-        if (!repository.deleteById(id)) {
-            return CommandOutcome.error("Announcement not found: " + id.value());
-        }
-        schedulerService.cancel(id);
-        return CommandOutcome.success("Deleted announcement '" + id.value() + "'.");
+        AnnouncementManagementResult result = managementService.delete(id);
+        return toOutcome(result);
     }
 
     private CommandOutcome toggle(CommandRequest request) {
         requireArgs(request, 2, "Usage: /announcer toggle <id>");
         AnnouncementId id = AnnouncementId.of(request.argument(1));
-        Announcement current = repository.findById(id)
-                .orElseThrow(() -> new AnnouncementNotFoundException(id));
-        Announcement updated = current.withEnabled(!current.enabled());
-        repository.save(updated);
-        if (updated.enabled() && updated.interval().isPresent()) {
-            schedulerService.schedule(updated);
-        } else {
-            schedulerService.cancel(id);
-        }
-        return CommandOutcome.success("Announcement '" + id.value() + "' "
-                + (updated.enabled() ? "enabled" : "disabled") + ".");
+        AnnouncementManagementResult result = managementService.toggle(id);
+        return toOutcome(result);
     }
 
     private CommandOutcome send(CommandRequest request) {
         requireArgs(request, 2, "Usage: /announcer send <id>");
         AnnouncementId id = AnnouncementId.of(request.argument(1));
-        Announcement announcement = repository.findById(id)
-                .orElseThrow(() -> new AnnouncementNotFoundException(id));
+        Announcement announcement = managementService.findById(id)
+                .orElseThrow(() -> new dev.studio.announcer.application.usecase.AnnouncementNotFoundException(id));
         DeliverySummary summary = dispatcher.broadcast(announcement);
         return CommandOutcome.success("Sent '" + id.value() + "' to " + summary.delivered()
                 + " audience(s). Skipped=" + summary.skippedByPermission() + ", invalid=" + summary.invalid() + ".");
@@ -225,8 +207,8 @@ public final class AnnouncerCommandService {
             return CommandOutcome.error("Preview can only be sent to an in-game player.");
         }
         AnnouncementId id = AnnouncementId.of(request.argument(1));
-        Announcement announcement = repository.findById(id)
-                .orElseThrow(() -> new AnnouncementNotFoundException(id));
+        Announcement announcement = managementService.findById(id)
+                .orElseThrow(() -> new dev.studio.announcer.application.usecase.AnnouncementNotFoundException(id));
         DeliverySummary summary = dispatcher.preview(announcement, request.senderId());
         return CommandOutcome.success("Previewed '" + id.value() + "' to " + summary.delivered() + " audience(s).");
     }
@@ -331,6 +313,74 @@ public final class AnnouncerCommandService {
         }
     }
 
+    private static CommandOutcome toOutcome(AnnouncementManagementResult result) {
+        if (result.success()) {
+            return CommandOutcome.success(result.message());
+        }
+        if (!result.errors().isEmpty()) {
+            return CommandOutcome.error(result.errors());
+        }
+        return CommandOutcome.error(result.message());
+    }
+
+    private static final class NoOpManagementService implements AnnouncementManagementService {
+        private final AnnouncementRepository repository;
+
+        NoOpManagementService(AnnouncementRepository repository) {
+            this.repository = repository;
+        }
+
+        @Override
+        public AnnouncementManagementResult create(Announcement announcement) {
+            repository.save(announcement);
+            return AnnouncementManagementResult.success("Created announcement '" + announcement.id().value() + "'.");
+        }
+
+        @Override
+        public AnnouncementManagementResult update(Announcement announcement) {
+            repository.save(announcement);
+            return AnnouncementManagementResult.success("Updated announcement '" + announcement.id().value() + "'.");
+        }
+
+        @Override
+        public AnnouncementManagementResult toggle(AnnouncementId id) {
+            Announcement current = repository.findById(id).orElse(null);
+            if (current == null) {
+                return AnnouncementManagementResult.failure("Announcement not found: " + id.value());
+            }
+            repository.save(current.withEnabled(!current.enabled()));
+            return AnnouncementManagementResult.success("Toggled announcement '" + id.value() + "'.");
+        }
+
+        @Override
+        public AnnouncementManagementResult delete(AnnouncementId id) {
+            if (!repository.deleteById(id)) {
+                return AnnouncementManagementResult.failure("Announcement not found: " + id.value());
+            }
+            return AnnouncementManagementResult.success("Deleted announcement '" + id.value() + "'.");
+        }
+
+        @Override
+        public AnnouncementManagementResult duplicate(AnnouncementId sourceId, AnnouncementId targetId) {
+            return AnnouncementManagementResult.failure("Duplicate not supported in no-op mode.");
+        }
+
+        @Override
+        public AnnouncementManagementResult saveAll() {
+            return AnnouncementManagementResult.success("Saved all announcements.");
+        }
+
+        @Override
+        public AnnouncementManagementResult validate(Announcement announcement) {
+            return AnnouncementManagementResult.success("Announcement is valid.");
+        }
+
+        @Override
+        public java.util.Optional<Announcement> findById(AnnouncementId id) {
+            return repository.findById(id);
+        }
+    }
+
     private static final class DisabledNetworkBroadcastService implements NetworkBroadcastService {
         @Override
         public CompletableFuture<Void> publish(dev.studio.announcer.api.network.NetworkBroadcastRequest request) {
@@ -369,24 +419,5 @@ public final class AnnouncerCommandService {
         @Override
         public void close() {
         }
-    }
-
-    private static final class NoOpSchedulerService implements AnnouncementSchedulerService {
-        @Override
-        public void reschedule(java.util.Collection<Announcement> announcements) {}
-
-        @Override
-        public void schedule(Announcement announcement) {}
-
-        @Override
-        public void cancel(dev.studio.announcer.domain.announcement.AnnouncementId announcementId) {}
-
-        @Override
-        public boolean isScheduled(dev.studio.announcer.domain.announcement.AnnouncementId announcementId) {
-            return false;
-        }
-
-        @Override
-        public void stop() {}
     }
 }
