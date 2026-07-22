@@ -57,7 +57,7 @@ class JoinWelcomeFlowTest {
     private static ExecuteTriggeredAnnouncementsUseCase useCase(
             AnnouncementRepository repository, RecordingDispatcher dispatcher, RecordingScheduler scheduler) {
         return new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, scheduler, new TriggerMatcher(SERVER_ID, GROUPS), Duration.ZERO);
+                repository, dispatcher, scheduler, new TriggerMatcher(SERVER_ID, GROUPS), "join-delay", Duration.ZERO);
     }
 
     @Test

@@ -42,7 +42,7 @@ class ExecuteTriggeredAnnouncementsUseCaseTest {
         TriggerMatcher matcher = new TriggerMatcher("server-01", Set.of("default"));
 
         ExecuteTriggeredAnnouncementsUseCase useCase = new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, scheduler, matcher, Duration.ofSeconds(5)
+                repository, dispatcher, scheduler, matcher, "join-delay", Duration.ofSeconds(5)
         );
 
         AnnouncementExecutionContext context = new AnnouncementExecutionContext("player-uuid", Map.of());
@@ -79,7 +79,7 @@ class ExecuteTriggeredAnnouncementsUseCaseTest {
         TriggerMatcher matcher = new TriggerMatcher("server-01", Set.of("default"));
 
         ExecuteTriggeredAnnouncementsUseCase useCase = new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, scheduler, matcher, Duration.ZERO
+                repository, dispatcher, scheduler, matcher, "join-delay", Duration.ZERO
         );
 
         useCase.execute(AnnouncementType.EVENT_JOIN, new AnnouncementExecutionContext("player-uuid", Map.of()));
