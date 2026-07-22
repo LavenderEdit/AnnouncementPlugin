@@ -55,6 +55,7 @@ import dev.studio.announcer.spigot.gui.AnvilTextInputService;
 import dev.studio.announcer.spigot.gui.SpigotAnnouncementEditorService;
 import dev.studio.announcer.spigot.listener.NotificationCleanupListener;
 import dev.studio.announcer.spigot.listener.PlayerJoinAnnouncementListener;
+import dev.studio.announcer.spigot.listener.PlayerWorldChangeAnnouncementListener;
 import dev.studio.announcer.spigot.placeholder.PlaceholderApiBridge;
 import dev.studio.announcer.spigot.placeholder.SpigotPlaceholderResolver;
 import dev.studio.announcer.spigot.scheduler.BukkitFoliaScheduler;
@@ -205,12 +206,27 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         } catch (Exception e) {
             getLogger().warning("Invalid default join delay format '" + rawJoinDelay + "', defaulting to 0s.");
         }
+        Duration defaultWorldChangeDelay = Duration.ZERO;
+        String rawWorldChangeDelay = getConfig().getString("events.world-change.delay", "PT0S");
+        try {
+            defaultWorldChangeDelay = Duration.parse(rawWorldChangeDelay);
+        } catch (Exception e) {
+            getLogger().warning("Invalid default world-change delay format '" + rawWorldChangeDelay + "', defaulting to 0s.");
+        }
         ExecuteTriggeredAnnouncementsUseCase executeTriggeredAnnouncementsUseCase = new ExecuteTriggeredAnnouncementsUseCase(
                 announcementRepository,
                 announcementDispatcher,
                 scheduler,
                 new TriggerMatcher(serverId, serverGroups),
+                "join-delay",
                 defaultJoinDelay);
+        ExecuteTriggeredAnnouncementsUseCase executeWorldChangeUseCase = new ExecuteTriggeredAnnouncementsUseCase(
+                announcementRepository,
+                announcementDispatcher,
+                scheduler,
+                new TriggerMatcher(serverId, serverGroups),
+                "world-change-delay",
+                defaultWorldChangeDelay);
 
         registerCommands();
         getServer().getPluginManager().registerEvents(
@@ -219,6 +235,9 @@ public final class AdvancedAnnouncerPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(anvilInputService, this);
         getServer().getPluginManager().registerEvents(
                 new PlayerJoinAnnouncementListener(executeTriggeredAnnouncementsUseCase),
+                this);
+        getServer().getPluginManager().registerEvents(
+                new PlayerWorldChangeAnnouncementListener(executeWorldChangeUseCase),
                 this);
         if (announcementEditorService instanceof SpigotAnnouncementEditorService spigotEditorService) {
             getServer().getPluginManager().registerEvents(spigotEditorService, this);

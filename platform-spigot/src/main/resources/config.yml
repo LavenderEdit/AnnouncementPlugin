@@ -67,3 +67,5 @@ defaults:
 events:
   join:
     delay: "PT0.5S"
+  world-change:
+    delay: "PT0S"

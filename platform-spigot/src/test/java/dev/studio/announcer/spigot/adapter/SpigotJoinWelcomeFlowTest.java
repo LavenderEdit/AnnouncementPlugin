@@ -71,7 +71,7 @@ class SpigotJoinWelcomeFlowTest {
                 joinAnnouncement("recurring", "RECURRING", "join-state: RECURRING", "all", true));
 
         ExecuteTriggeredAnnouncementsUseCase useCase = new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), Duration.ZERO);
+                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), "join-delay", Duration.ZERO);
 
         useCase.execute(AnnouncementType.EVENT_JOIN, new AnnouncementExecutionContext(playerId.toString(), Map.of()));
 
@@ -95,7 +95,7 @@ class SpigotJoinWelcomeFlowTest {
                 joinAnnouncement("recurring", "RECURRING", "join-state: RECURRING", "all", true));
 
         ExecuteTriggeredAnnouncementsUseCase useCase = new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), Duration.ZERO);
+                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), "join-delay", Duration.ZERO);
 
         useCase.execute(AnnouncementType.EVENT_JOIN, new AnnouncementExecutionContext(playerId.toString(), Map.of()));
 
@@ -117,7 +117,7 @@ class SpigotJoinWelcomeFlowTest {
                 joinAnnouncement("first_join", "FIRST", "join-state: FIRST_JOIN", "all", false));
 
         ExecuteTriggeredAnnouncementsUseCase useCase = new ExecuteTriggeredAnnouncementsUseCase(
-                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), Duration.ZERO);
+                repository, dispatcher, new ImmediateScheduler(), new TriggerMatcher("server-01", Set.of("default")), "join-delay", Duration.ZERO);
 
         useCase.execute(AnnouncementType.EVENT_JOIN, new AnnouncementExecutionContext(playerId.toString(), Map.of()));
 

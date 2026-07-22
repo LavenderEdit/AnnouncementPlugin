@@ -85,12 +85,12 @@ announcements:
     messages:
       - ""
       - "<center><gradient:#2ecc71:#27ae60><strikethrough>                                    </strikethrough></gradient></center>"
-      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha cambiado de mundo</gray></center>"
+      - "<center><gray>  </gray><white><bold>{actor_name}</bold></white><gray> ha viajado de </gray><green><bold>{from_world}</bold></green><gray> a </green><bold>{to_world}</bold></green></center>"
       - ""
       - "<center><gradient:#2ecc71:#27ae60><strikethrough>                                    </strikethrough></gradient></center>"
       - ""
     actionbar:
-      message: "<gradient:#2ecc71:#27ae60>🌍 </gradient><white>{actor_name}</white><gradient:#27ae60:#2ecc71> ha cambiado de mundo</gradient>"
+      message: "<gradient:#2ecc71:#27ae60>🌍 </gradient><white>{actor_name}</white><gradient:#27ae60:#2ecc71> ha viajado de {from_world} a {to_world}</gradient>"
       duration: "PT3S"
     priority: 5
 

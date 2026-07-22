@@ -19,19 +19,22 @@ public final class ExecuteTriggeredAnnouncementsUseCase {
     private final AnnouncementDispatcher dispatcher;
     private final SchedulerPort scheduler;
     private final TriggerMatcher matcher;
-    private final Duration defaultJoinDelay;
+    private final String delayMetadataKey;
+    private final Duration defaultDelay;
 
     public ExecuteTriggeredAnnouncementsUseCase(
             AnnouncementRepository repository,
             AnnouncementDispatcher dispatcher,
             SchedulerPort scheduler,
             TriggerMatcher matcher,
-            Duration defaultJoinDelay) {
+            String delayMetadataKey,
+            Duration defaultDelay) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.dispatcher = Objects.requireNonNull(dispatcher, "dispatcher");
         this.scheduler = Objects.requireNonNull(scheduler, "scheduler");
         this.matcher = Objects.requireNonNull(matcher, "matcher");
-        this.defaultJoinDelay = defaultJoinDelay == null ? Duration.ZERO : defaultJoinDelay;
+        this.delayMetadataKey = delayMetadataKey == null ? "delay" : delayMetadataKey;
+        this.defaultDelay = defaultDelay == null ? Duration.ZERO : defaultDelay;
     }
 
     public void execute(AnnouncementType type, AnnouncementExecutionContext context) {
@@ -44,13 +47,13 @@ public final class ExecuteTriggeredAnnouncementsUseCase {
                 .toList();
 
         for (Announcement announcement : announcements) {
-            Duration delay = defaultJoinDelay;
-            String overrideDelay = announcement.metadata().get("join-delay");
+            Duration delay = defaultDelay;
+            String overrideDelay = announcement.metadata().get(delayMetadataKey);
             if (overrideDelay != null && !overrideDelay.isBlank()) {
                 try {
                     delay = Duration.parse(overrideDelay);
                 } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Invalid join-delay metadata format for announcement " 
+                    LOGGER.log(Level.WARNING, "Invalid delay metadata format for announcement "
                             + announcement.id().value() + ": " + overrideDelay, e);
                 }
             }
@@ -60,7 +63,7 @@ public final class ExecuteTriggeredAnnouncementsUseCase {
                 try {
                     dispatcher.dispatch(announcement, context.actorId());
                 } catch (Exception e) {
-                    LOGGER.log(Level.SEVERE, "Error delivering triggered announcement " 
+                    LOGGER.log(Level.SEVERE, "Error delivering triggered announcement "
                             + announcement.id().value() + " to actor " + context.actorId(), e);
                 }
             });
